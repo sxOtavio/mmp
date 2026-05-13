@@ -1,17 +1,14 @@
 import Header from "@/components/Header";
-import Hero from "@/components/Hero";
+import Login from "@/components/Login";
 import Categorias from "@/components/Categories";
 import Produtos from "@/components/Products";
 import Footer from "@/components/Footer";
-import Promos from "@/components/Promos";
 
-export default function Home() {
+export default function loginPage() {
   return (
     <main>
       <Header />
-      <Hero />
-      <Categorias />
-      <Produtos />
+      <Login />
       <Footer />
     </main>
   );
