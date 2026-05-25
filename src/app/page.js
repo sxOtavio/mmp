@@ -1,9 +1,9 @@
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import Categorias from "@/components/Categories";
-import Produtos from "@/components/Products";
+import PromoProducts from "@/components/PromoProducts";
+import Products from "@/components/Products";
 import Footer from "@/components/Footer";
-import Promos from "@/components/Promos";
 
 export default function Home() {
   return (
@@ -11,7 +11,8 @@ export default function Home() {
       <Header />
       <Hero />
       <Categorias />
-      <Produtos />
+      <PromoProducts />
+      <Products />
       <Footer />
     </main>
   );

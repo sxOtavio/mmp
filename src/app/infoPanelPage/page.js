@@ -1,6 +1,6 @@
 import Header from "@/components/SlimHeader";
 import Panel from "@/components/Panel";
-import Produtos from "@/components/Products";
+import Produtos from "@/components/PromoProducts";
 import Footer from "@/components/Footer";
 
 export default function InfoPanel() {

@@ -1,9 +1,16 @@
+import React from "react";
+import { useCompilerXlsx } from "@/hooks/useCompilerXlsx";
 export default function PanelToolbar() {
+  const { handleFileChange } = useCompilerXlsx();
   return (
     <section className="bg-yellow-500 w-full rounded-lg px-4 py-1 m-1 flex justify-left gap-15">
       <div>
-        <input type="file" name="file" id="inputProductsData" className="bg-yellow-400 m-1 hover:bg-yellow-600  hover:scale-105 transition-transform text-black font-bold py-1 px-4 rounded" />
-
+        <section>
+        <input type="file" name="file" onChange={handleFileChange} id="inputProductsData" className="bg-yellow-400 m-1 hover:bg-yellow-600  hover:scale-105 transition-transform text-black font-bold py-1 px-4 rounded" />
+        <button className="bg-yellow-400 m-1 hover:bg-yellow-600  hover:scale-105 transition-transform text-black font-bold py-1 px-4 rounded">
+          Importar produtos
+        </button>
+        </section>
         <button className="bg-yellow-400 m-1 hover:bg-yellow-600  hover:scale-105 transition-transform text-black font-bold py-1 px-4 rounded">
           Gerenciar backups
         </button>

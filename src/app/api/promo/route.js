@@ -7,7 +7,7 @@ export async function GET() {
   console.log("conexão estabelecida");
 
   try {
-    const result = await client.query("SELECT * FROM products");
+    const result = await client.query("SELECT * FROM products WHERE active = true");
     console.log("resposta recebida");
     return NextResponse.json(result.rows);
   

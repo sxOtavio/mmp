@@ -1,21 +1,48 @@
-const API_URL="";
-export async function fetchProducts(props) {
-     
-    try {
-      const response = await fetch(`${API_URL}/products`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, board_id: boardId }),
-      });
+const API_URL = "http://localhost:3000/api";
 
-      const data = await response.json();
+export async function fetchProducts() {
+  try {
+    const response = await fetch(
+      `${API_URL}/products`
+    );
 
-      if (response.ok) {
-        alert(`Produtos carregados`);
-      } else {
-        alert(data.error);
-      }
-    } catch (err) {
-      console.error(err);
+    if (!response.ok) {
+      throw new Error(
+        "Erro ao buscar produtos"
+      );
     }
+
+    const data = await response.json();
+
+    return data;
+
+  } catch (error) {
+    console.error(error);
+
+    return [];
   }
+}
+
+//--------------------------  Produtos em promoção ----------------------------------
+export async function fetchPromoProducts() {
+  try {
+    const response = await fetch(
+      `${API_URL}/promo`
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        "Erro ao buscar produtos"
+      );
+    }
+
+    const data = await response.json();
+
+    return data;
+
+  } catch (error) {
+    console.error(error);
+
+    return [];
+  }
+}

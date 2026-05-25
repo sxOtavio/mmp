@@ -1,24 +1,47 @@
-import { useState } from "react";
-import { fetchProducts } from "@/services/productsServices";
+import { useState, useCallback } from "react";
+import { fetchProducts, fetchPromoProducts } from "@/services/productsServices";
+
 export function useProducts() {
-  const [products, setProducts] = useState([]);
+    const [products, setProducts] = useState([]);
+    const [promoProducts, setPromoProducts] = useState([]);
     const [loading, setLoading] = useState([]);
+
     const loadProductsData = useCallback(async () => {
-    setLoading(true);
+      console.log("Carregando dados dos produtos...");
     try {
-      const [tasksData, columnsData] = await Promise.all([
-        fetchProducts(),
-      ]);
-      setProducts(products);
+       setLoading(true);
+      const [productsData] = await Promise.all([fetchProducts(),]);
+      setProducts(productsData);
 
     } catch (error) {
-      console.error("Erro ao carregar dados do board:", error);
+      console.error("Erro ao carregar dados dos produtos:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+    const loadPromoProductsData = useCallback(async () => {
+      console.log("Carregando dados dos produtos em promoção...");
+    try {
+       setLoading(true);
+      const [promoProductsData] = await Promise.all([fetchPromoProducts(),]);
+      setPromoProducts(promoProductsData);
+
+    } catch (error) {
+      console.error("Erro ao carregar dados dos produtos em promoção:", error);
     } finally {
       setLoading(false);
     }
   }, []);
 
     return{
+        products,
+        promoProducts,
+        loading,
+
+        //Hooks exportados
         
+        loadProductsData,
+        loadPromoProductsData
     }
 }

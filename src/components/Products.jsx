@@ -1,40 +1,43 @@
+"use client";
 const produtos = [
   {
     nome: "Arroz 5kg",
     preco: 25.9,
-    promo: 21.5,
+    promo: 19.9,
   },
   {
     nome: "Feijão",
     preco: 8.5,
-    promo: 7.19,
+    promo: 6.9,
   },
 ];
 
-export default function Produtos() {
+export default function Products() {
   return (
-    <section className="px-6 py-8 bg-gray-50 rounded">
-      <h2 className="font-bold mb-6 text-gray-800">
-        OFERTAS EM DESTAQUE
+    <section className="px-6 py-8 bg-gray-50">
+      <h2 className="text-xl font-bold mb-4 text-gray-800">
+        🔥 Preços atualizados, fique por dentro!
       </h2>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {produtos.map((p, i) => (
-          <div key={i} className="bg-white p-4 rounded-xl shadow-sm">
-            <div className="bg-gray-100 h-24 rounded mb-3"></div>
+          <div
+            key={i}
+            className="bg-white p-4 rounded-xl shadow-md"
+          >
+            <div className="bg-gray-100 h-24 rounded mb-3">{p.image_url ? <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" /> : <span>Imagem não disponível</span>}</div>
+            <h3 className="font-bold">{p.nome}</h3>
 
-            <h3 className="text-sm text-gray-800">{p.nome}</h3>
-
-            <p className="line-through text-gray-400 text-sm">
+            <p className="line-through text-gray-400">
               R$ {p.preco}
             </p>
 
-            <p className="text-red-600 font-bold">
+            <p className="text-red-600 font-bold text-lg">
               R$ {p.promo}
             </p>
 
-            <button className="mt-2 bg-yellow-400 w-full py-2 rounded-lg">
-              +
+            <button className="mt-2 w-full bg-yellow-400 py-2 rounded-lg">
+              Colocar no carrinho
             </button>
           </div>
         ))}
