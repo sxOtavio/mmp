@@ -34,7 +34,7 @@ export async function POST(request) {
 
     // Remove dados sensíveis antes de responder ao frontend
     const { password_hash, ...dadosSeguros } = usuarioEncontrado;
-
+console.log("dados recuperados",dadosSeguros)
     return NextResponse.json(dadosSeguros);
 
   } catch (error) {

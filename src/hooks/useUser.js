@@ -46,7 +46,8 @@ export function useUser() {
   const router = useRouter(); // ✨ No Next.js usamos router em vez de navigate
   const [auth, setAuth] = useState({
     loginData: null,   
-    token: null,       
+    token: null, 
+    userType: null,      
     loading: false,    
   });
 
@@ -57,15 +58,18 @@ export function useUser() {
       const userData = await fetchUsers(user, password);
       setAuth({
         loginData: userData,
-        token: userData?.token || null, 
+        token: userData?.token || null,
+        userType: userData?.userType || null,
         loading: false,
       });
       
       console.log("LOGIN BEM SUCEDIDO, BEM VINDO!! Dados do usuário carregados:", userData);
+      console.log("Tipo de usuario:", userData?.token);
       console.log("Token armazenado:", userData?.token);
-      
+      if(userData.role=="admin"){
       router.push("/infoPanelPage");
-
+      }
+      else{ router.push("/userPage");}
     } catch (error) {
       console.error("Erro ao carregar dados do usuário:", error);
       setAuth((prev) => ({ ...prev, loading: false }));
