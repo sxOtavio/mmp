@@ -3,7 +3,7 @@ const API_URL = "http://localhost:3000/api";
 export async function fetchProducts() {
   try {
     const response = await fetch(
-      `${API_URL}/products`
+      `/api/products`
     );
 
     if (!response.ok) {
@@ -27,7 +27,7 @@ export async function fetchProducts() {
 export async function fetchPromoProducts() {
   try {
     const response = await fetch(
-      `${API_URL}/promo`
+      `/api/promo`
     );
 
     if (!response.ok) {

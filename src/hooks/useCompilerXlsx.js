@@ -1,140 +1,371 @@
+"use client";
 import { useRouter } from "next/navigation";
 import { useState, useCallback , useEffect} from "react";
-import * as XLSX from "xlsx"; // Biblioteca para ler arquivos XLSX
+import { fetchPostXlsxFile } from "../services/compilerServices"; 
+import * as XLSX from "xlsx"; 
 
 export function useCompilerXlsx() {
-  const router = useRouter(); // ✨ No Next.js usamos router em vez de navigate
+  const router = useRouter(); 
   const [auth, setAuth] = useState({
     loginData: null,   
     token: null,       
     loading: false,    
   });
-   const [produtosJSON, setProdutosJSON] = useState([]); 
-//------------------------------- IMPORTAÇÃO DO ARQUIVO XLSX--------------------------------------------------------------------------
-    const [file, setFile] = useState(null);
-  const handleFileChange = (e) => {
-    console.log("Arquivos recebidos no hook")
-    // Verifica se o usuário realmente selecionou um arquivo
-    console.log("-> Hook guardou o arquivo:", e || "Nenhum arquivo selecionado");
-      setFile(e);
-      // LOG CORRETO: Usando a variável local para não pegar o estado atrasado
-      console.log("Sucesso!! Arquivo sendo processado");
-    
+  
+  const [produtosJSON, setProdutosJSON] = useState([]); 
+  const [produtosPorCategoria, setProdutosPorCategoria] = useState({});
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // ------------------------------- IMPORTAÇÃO DO ARQUIVO XLSX --------------------------------------------------------------------------
+  const handleFileChange = (fileObj) => {
+    console.log("Arquivos recebidos no hook");
+    console.log("-> Hook guardou o arquivo:", fileObj ? fileObj.name : "Nenhum arquivo selecionado");
+    setFile(fileObj);
+    console.log("Sucesso!! Arquivo pronto para o processamento");
   };
-//------------------------------- TRATAMENTO DO ARQUIVO XLSX --------------------------------------------------------------------------
 
-const processFile = useCallback(() => {
-  if (!file) return;
+  // ------------------------------- TRATAMENTO DO ARQUIVO XLSX --------------------------------------------------------------------------
+  const processFile = useCallback(() => {
+    if (!file) return;
 
-  console.log("-> Iniciando tratamento de planilha com colunas mescladas...");
-  const reader = new FileReader();
+    console.log("-> Iniciando tratamento de planilha com colunas mescladas...");
+    const reader = new FileReader();
 
-  reader.onload = (e) => {
-    try {
-      const data = e.target.result;
-      const workbook = XLSX.read(data, { type: "binary" });
-      
-      const firstSheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[firstSheetName];
+    reader.onload = (e) => {
+      try {
+        const data = e.target.result;
+        const workbook = XLSX.read(data, { type: "binary" });
+        
+        const firstSheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[firstSheetName];
 
-      // 1. Lê a planilha como matriz pura (Array de Arrays) para ignorar a mesclagem de cabeçalho
-      const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-      console.log(`-> Linhas totais na matriz crua: ${matrix.length}`);
+        // Pega a matriz crua com todas as células, incluindo vazias
+        const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+        console.log(`-> Linhas totais na matriz crua: ${matrix.length}`);
 
-      const produtosTratados = [];
+        // ============ MAPEAMENTO DINÂMICO DAS COLUNAS ============
+        let headerRowIndex = -1;
+        let precoPromocaoColIndex = -1;
+        let precoAnteriorColIndex = -1;
+        let precoAtualColIndex = -1;
+        let estoqueColIndex = -1;
+        let produtoColIndex = -1;
+        let gtinColIndex = 0; // GTIN geralmente na primeira coluna (índice 0)
 
-      // 2. Varrer a planilha linha por linha
-      matrix.forEach((linha, index) => {
-        // Ignora linhas que não são arrays ou estão totalmente vazias
-        if (!Array.isArray(linha) || linha.length === 0) return;
+        // Procura pela linha de cabeçalho
+        for (let i = 0; i < matrix.length; i++) {
+          const row = matrix[i];
+          if (!row || !Array.isArray(row)) continue;
+          
+          for (let j = 0; j < row.length; j++) {
+            const cell = String(row[j] || "").trim();
+            
+            if (cell === "Preço Promoção" || cell === "Preço Promoção") {
+              headerRowIndex = i;
+              precoPromocaoColIndex = j;
+            }
+            if (cell === "Preço Anterior") {
+              headerRowIndex = i;
+              precoAnteriorColIndex = j;
+            }
+            if (cell === "Preço Atual") {
+              headerRowIndex = i;
+              precoAtualColIndex = j;
+            }
+            if (cell === "Estoque") {
+              headerRowIndex = i;
+              estoqueColIndex = j;
+            }
+            if (cell === "Produto") {
+              headerRowIndex = i;
+              produtoColIndex = j;
+            }
+          }
+          
+          // Se já encontrou o cabeçalho, para a busca
+          if (headerRowIndex !== -1 && precoPromocaoColIndex !== -1) {
+            break;
+          }
+        }
 
-        // O GTIN/Código de barras costuma ser o primeiro item da linha com números longos
-        const primeiraCelula = String(linha[0] || "").trim();
+        // Se não encontrou todas as colunas, usa os índices fixos como fallback
+        if (headerRowIndex === -1) {
+          console.warn("Não encontrou linha de cabeçalho, usando índices fixos");
+          headerRowIndex = 4; // Linha típica onde começa os dados após os cabeçalhos da empresa
+        }
 
-        // VALIDAÇÃO EXTREMA: Só processa a linha se a primeira célula for um GTIN válido 
-        const ehGtinValido = /^\d{1,14}$/.test(primeiraCelula);
+        // Índices fixos com base na estrutura da sua planilha
+        const FIXED_GTIN_COL = 0;
+        const FIXED_PRODUTO_COL = 3;
+        const FIXED_ESTOQUE_COL = 8;
+        const FIXED_PRECO_ANTERIOR_COL = 11;
+        const FIXED_PRECO_PROMOCAO_COL = 13;
+        const FIXED_PRECO_ATUAL_COL = 14;
 
-        if (ehGtinValido) {
-          const gtin = primeiraCelula;
-          // Contamos as posições (índices) das colunas da esquerda para a direita:
-          // linha[1] = Código (GTIN)
-          // linha[2] = Código de referência
-          // linha[3] = Nome do Produto
-          const nome = String(linha[3] || "").trim();
-          // Busca inteligente  os preços são os últimos valores numéricos
-          const valoresNumericos = linha.filter(celula => typeof celula === "number" || (!isNaN(Number(String(celula).replace(",", "."))) && String(celula).trim() !== ""));
+        console.log(`Cabeçalho encontrado na linha ${headerRowIndex}`);
+        console.log(`Colunas mapeadas - Promoção:${precoPromocaoColIndex}, Anterior:${precoAnteriorColIndex}, Atual:${precoAtualColIndex}, Estoque:${estoqueColIndex}, Produto:${produtoColIndex}`);
 
-          const estoqueRaw = String(linha[8] || linha[9] || "0").replace(",", ".");
-          const estoque = Math.floor(Number(estoqueRaw)) || 0;
+       const produtosTratados = [];
+       const categoriasProdutos = {}; // Organiza produtos por categoria
+       let currentCategory = "SEM_CATEGORIA";
 
-          // Preço Atual geralmente é o último valor da linha
-          const precoAtualRaw = String(linha[linha.length - 1] || "0").replace(",", ".");
-          const precoAtual = Number(precoAtualRaw) || 0;
+        // ============ PROCESSAMENTO DAS LINHAS ============
+        // Começa da linha após o cabeçalho encontrado (ou linha 5 se não encontrou)
+        const startRow = headerRowIndex !== -1 ? headerRowIndex + 1 : 5;
+        
+        const CATEGORY_SKIP_KEYWORDS = [
+          "codigo",
+          "código",
+          "produto",
+          "produtos",
+          "preço",
+          "preco",
+          "estoque",
+          "empresa",
+          "registro",
+          "promoção",
+          "promocao",
+          "página",
+          "pagina",
+          "page",
+          "total",
+          "subtotal",
+          "unidade",
+          "valor",
+          "marca"
+        ];
 
-          // Preço Anterior (Preço Normal)
-          const precoAnteriorRaw = String(linha[linha.length - 3] || precoAtual).replace(",", ".");
-          const precoNormal = Number(precoAnteriorRaw) || 0;
+        for (let i = startRow; i < matrix.length; i++) {
+          const linha = matrix[i];
+          
+          // Validação da linha
+          if (!linha || !Array.isArray(linha) || linha.length === 0) continue;
+          
+          // Pega o GTIN/Código (primeira coluna)
+          const gtinRaw = String(linha[FIXED_GTIN_COL] || "").trim();
+          
+          // Filtra linhas que não são produtos (vazias, textos, etc)
+          if (!gtinRaw || gtinRaw === "" || gtinRaw === "Empresa:" || gtinRaw === "Registro(s):") continue;
+          
+          // Valida se é um GTIN válido (apenas números, entre 8 e 14 dígitos)
+          // Aceita também códigos internos como "177", "77", "11011", etc
+          const isNumericGtin = /^\d+$/.test(gtinRaw);
+          
+          const rowTextLower = linha
+            .map((cell) => String(cell || "").trim().toLowerCase())
+            .filter(Boolean)
+            .join(" ");
 
-          // Preço Promoção
-          const precoPromoRaw = String(linha[linha.length - 2] || "").replace(",", ".");
-          const precoPromocional = precoPromoRaw && !isNaN(Number(precoPromoRaw)) && Number(precoPromoRaw) !== precoNormal && Number(precoPromoRaw) !== precoAtual ? Number(precoPromoRaw) : null;
+          const isHeaderLikeRow = CATEGORY_SKIP_KEYWORDS.some((keyword) => rowTextLower.includes(keyword));
 
-          console.log(`[Produto Encontrado] GTIN: ${gtin} | ${nome} | Est: ${estoque} | Preço Normal: R$ ${precoNormal} |Preço Promocional: R$ ${precoPromocional} | Atual: R$ ${precoAtual}`);
+          // ============ DETECÇÃO DE CATEGORIA ============
+          // Se o GTIN não é numérico e a linha não parece ser um cabeçalho / quebra de página
+          if (!isNumericGtin) {
+            if (isHeaderLikeRow) {
+              continue;
+            }
 
-          produtosTratados.push({
-            gtin,
-            nome,
+            currentCategory = gtinRaw;
+            if (!categoriasProdutos[currentCategory]) {
+              categoriasProdutos[currentCategory] = [];
+            }
+            console.log(`📂 Categoria detectada: ${currentCategory}`);
+            continue;
+          }
+          
+          if (!isNumericGtin) continue;
+          
+          // ============ NOME DO PRODUTO ============
+          let nome = "";
+          if (produtoColIndex !== -1 && linha[produtoColIndex]) {
+            nome = String(linha[produtoColIndex]).trim();
+          } else if (linha[FIXED_PRODUTO_COL]) {
+            nome = String(linha[FIXED_PRODUTO_COL]).trim();
+          }
+          
+          if (!nome) continue; // Pula linhas sem nome de produto
+          
+          // ============ ESTOQUE ============
+          let estoque = 0;
+          let estoqueRaw = "0";
+          
+          if (estoqueColIndex !== -1 && linha[estoqueColIndex] !== undefined) {
+            estoqueRaw = String(linha[estoqueColIndex]).replace(",", ".");
+          } else if (linha[FIXED_ESTOQUE_COL] !== undefined) {
+            estoqueRaw = String(linha[FIXED_ESTOQUE_COL]).replace(",", ".");
+          }
+          
+          estoque = Number(estoqueRaw);
+          if (isNaN(estoque)) estoque = 0;
+          
+          // ============ PREÇO ATUAL ============
+          let precoAtual = 0;
+          let precoAtualRaw = "0";
+          
+          if (precoAtualColIndex !== -1 && linha[precoAtualColIndex] !== undefined) {
+            precoAtualRaw = String(linha[precoAtualColIndex]).replace(",", ".");
+          } else if (linha[FIXED_PRECO_ATUAL_COL] !== undefined) {
+            precoAtualRaw = String(linha[FIXED_PRECO_ATUAL_COL]).replace(",", ".");
+          }
+          
+          precoAtual = Number(precoAtualRaw);
+          if (isNaN(precoAtual)) precoAtual = 0;
+          
+          // ============ PREÇO ANTERIOR (NORMAL) ============
+          let precoNormal = precoAtual; // Fallback para preço atual
+          let precoAnteriorRaw = "";
+          
+          if (precoAnteriorColIndex !== -1 && linha[precoAnteriorColIndex] !== undefined) {
+            precoAnteriorRaw = String(linha[precoAnteriorColIndex]).replace(",", ".");
+          } else if (linha[FIXED_PRECO_ANTERIOR_COL] !== undefined) {
+            precoAnteriorRaw = String(linha[FIXED_PRECO_ANTERIOR_COL]).replace(",", ".");
+          }
+          
+          if (precoAnteriorRaw && precoAnteriorRaw !== "") {
+            const parsed = Number(precoAnteriorRaw);
+            if (!isNaN(parsed) && parsed > 0) {
+              precoNormal = parsed;
+            }
+          }
+          
+          // ============ PREÇO PROMOÇÃO (CORREÇÃO PRINCIPAL) ============
+          let precoPromocional = null;
+          let precoPromocaoRaw = "";
+          
+          // Tenta pegar da coluna dinâmica primeiro
+          if (precoPromocaoColIndex !== -1 && linha[precoPromocaoColIndex] !== undefined) {
+            precoPromocaoRaw = String(linha[precoPromocaoColIndex]).trim().replace(",", ".");
+          }
+          
+          // Se não encontrou, tenta o índice fixo
+          if ((!precoPromocaoRaw || precoPromocaoRaw === "") && linha[FIXED_PRECO_PROMOCAO_COL] !== undefined) {
+            precoPromocaoRaw = String(linha[FIXED_PRECO_PROMOCAO_COL]).trim().replace(",", ".");
+          }
+          
+          // Processa o valor da promoção
+          if (precoPromocaoRaw && precoPromocaoRaw !== "" && precoPromocaoRaw !== "0") {
+            const valorPromocao = Number(precoPromocaoRaw);
+            
+            // Verifica se é um número válido
+            if (!isNaN(valorPromocao) && valorPromocao > 0) {
+              // Só considera como promoção se for DIFERENTE do preço normal E do preço atual
+              // E se for menor que o preço normal (ou algum critério de negócio)
+              const isDifferentFromNormal = Math.abs(valorPromocao - precoNormal) > 0.01;
+              const isDifferentFromCurrent = Math.abs(valorPromocao - precoAtual) > 0.01;
+              
+              if (isDifferentFromNormal || isDifferentFromCurrent) {
+                precoPromocional = valorPromocao;
+              }
+            }
+          }
+          
+          // Log para debug (opcional - remover em produção)
+          if (precoPromocional) {
+            console.log(`[PROMOÇÃO] ${nome.substring(0, 40)}... | Normal: R$ ${precoNormal.toFixed(2)} | Promo: R$ ${precoPromocional.toFixed(2)} | Atual: R$ ${precoAtual.toFixed(2)}`);
+          }
+          
+          // ============ CRIA OBJETO DO PRODUTO ============
+          const produto = {
+            gtin: gtinRaw,
+            nome: nome,
             precoNormal: precoNormal > 0 ? precoNormal : precoAtual,
-            precoPromocional,
-            estoque
+            precoPromocional: precoPromocional,
+            estoque: estoque,
+            categoria: currentCategory,
+            category: currentCategory
+          };
+          
+          // Adiciona o produto ao array final
+          produtosTratados.push(produto);
+          
+          // Adiciona o produto ao array de sua categoria
+          if (!categoriasProdutos[currentCategory]) {
+            categoriasProdutos[currentCategory] = [];
+          }
+          categoriasProdutos[currentCategory].push(produto);
+        }
+        
+        setProdutosJSON(produtosTratados);
+        setProdutosPorCategoria(categoriasProdutos);
+
+        // Debug - disponibiliza no console global
+        window.produtosPlanilhaDebug = produtosTratados; 
+
+        console.log("=========================================");
+        console.log(`✅ Total de produtos processados: ${produtosTratados.length}`);
+        console.log(`📦 Produtos com estoque positivo: ${produtosTratados.filter(p => p.estoque > 0).length}`);
+        console.log(`🏷️  Produtos com preço promocional: ${produtosTratados.filter(p => p.precoPromocional).length}`);
+        console.log(`📂 Categorias encontradas: ${Object.keys(categoriasProdutos).length}`);
+        Object.entries(categoriasProdutos).forEach(([cat, prods]) => {
+          const promoCount = prods.filter(p => p.precoPromocional).length;
+          console.log(`   - ${cat}: ${prods.length} produtos (${promoCount} com promoção)`);
+        });
+        console.log("=========================================");
+        
+        // Mostra alguns exemplos de produtos com promoção
+        const promosExemplo = produtosTratados.filter(p => p.precoPromocional).slice(0, 5);
+        if (promosExemplo.length > 0) {
+          console.log("Exemplos de produtos com promoção:");
+          promosExemplo.forEach(p => {
+            console.log(`  - ${p.nome.substring(0, 50)}: R$ ${p.precoPromocional}`);
           });
         }
-      });
-      setProdutosJSON(produtosTratados);
-      console.log("-> Mapeamento por Matriz concluído!", produtosTratados);
+        
+      } catch (error) {
+        console.error("Erro ao ler dados da planilha:", error);
+        alert("Erro crítico ao processar planilha com células mescladas.");
+      }
+    };
 
-    } catch (error) {
-      console.error("Erro ao ler dados da planilha:", error);
-      alert("Erro crítico ao processar planilha com células mescladas.");
+    reader.readAsBinaryString(file);
+  }, [file]);
+
+  // ------------------------------- IMPORTAÇÃO DO ARQUIVO XLSX PARA O BANCO DE DADOS ----------------------------------------------------
+  const importProductsData = useCallback(async () => {
+    if (produtosJSON.length === 0) {
+      alert("⚠️ Aguarde o processamento da planilha ou selecione um arquivo válido!");
+      return;
     }
-  };
 
-  reader.readAsBinaryString(file);
-}, [file]);
-
-
-
-
-
-//------------------------------- IMPORTAÇÃO DO ARQUIVO XLSX PARA O BANCO DE DADOS ----------------------------------------------------
-
-    const importProductsData = useCallback(async () => {
-      console.log("chamando a funcao de servicos API...");
-    try {
-       setLoading(true);
+    console.log(`🚀 Iniciando importação de ${produtosJSON.length} produtos em lotes...`);
+    console.log(`📊 Produtos com promoção a serem enviados: ${produtosJSON.filter(p => p.precoPromocional).length}`);
     
+    try {
+      setLoading(true);
+      const TAMANHO_LOTE = 500;
+
+      for (let i = 0; i < produtosJSON.length; i += TAMANHO_LOTE) {
+        const lote = produtosJSON.slice(i, i + TAMANHO_LOTE);
+        console.log(`📤 Enviando lote ${Math.floor(i / TAMANHO_LOTE) + 1}/${Math.ceil(produtosJSON.length / TAMANHO_LOTE)} (${lote.length} produtos)...`);
+        console.log(`   Produtos com promoção neste lote: ${lote.filter(p => p.precoPromocional).length}`);
+        
+        await fetchPostXlsxFile(lote); 
+      }
+
+      alert(`🎉 ${produtosJSON.length} produtos foram importados com sucesso!`);
+      console.log("✅ Importação finalizada com sucesso!");
 
     } catch (error) {
-      console.error("Erro ao importar produtos:", error);
+      console.error("❌ Erro ao importar produtos:", error);
+      alert("Ocorreu um erro no envio dos lotes. Verifique o console para mais detalhes.");
     } finally {
       setLoading(false);
     }
-  }, []);
- //------------------------USE EFFECT PARA PROCESSAR OS ARQUIVOS-------------------
+  }, [produtosJSON]);
 
- useEffect(() => {
+  // ------------------------ USE EFFECT PARA PROCESSAR OS ARQUIVOS -------------------
+  useEffect(() => {
     if (file) {
       processFile();
     }
   }, [file, processFile]);
-  
 
   return {
-    
-    //Variaves exportadas
-
-    //Hooks exportados
+    loading,
+    produtosJSON,
+    produtosPorCategoria,
     importProductsData,
     handleFileChange,
-};
+  };
 }

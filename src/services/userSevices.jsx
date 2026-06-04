@@ -1,5 +1,4 @@
 const API_URL = "http://localhost:3000/api";
-
 // 1. Adicionado os parâmetros 'user' e 'password' na função
 export async function fetchUsers(user, password) {
   try {

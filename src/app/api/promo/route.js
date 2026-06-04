@@ -7,8 +7,7 @@ export async function GET() {
   console.log("conexão estabelecida");
 
   try {
-    const result = await client.query("SELECT * FROM products WHERE active = true");
-    console.log("resposta recebida");
+    const result = await client.query("SELECT * FROM products WHERE promotion_price IS NOT NULL AND promotion_price != 0");
     return NextResponse.json(result.rows);
   
   } finally {
