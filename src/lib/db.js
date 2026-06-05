@@ -1,7 +1,9 @@
-import pg from "pg";
+import { Pool } from "@neondatabase/serverless";
 
-const { Pool } = pg;
+const globalForPG = global;
 
-export const pool = new Pool({
+export const pool = globalForPG.__pgPool ?? new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+
+globalForPG.__pgPool = pool;
