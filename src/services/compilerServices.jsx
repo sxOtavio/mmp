@@ -6,7 +6,7 @@ export async function fetchPostXlsxFile(lote) {
       console.log("Preco promocional tratado para cada produto:", lote.map(p => ({ precoPromocional: p.precoPromocional })));
         
   try {
-    const response = await fetch(`${API_URL}/compiler`, { 
+    const response = await fetch(`/api/compiler`, { 
       method: "POST",
       headers: {
         "Content-Type": "application/json",
