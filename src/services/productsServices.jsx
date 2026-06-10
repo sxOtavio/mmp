@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:3000/api";
+
 
 export async function fetchProducts() {
   try {
@@ -37,11 +37,37 @@ export async function fetchPromoProducts() {
     }
 
     const data = await response.json();
-
+console.log("Produtos em promoçõa", data);
     return data;
 
   } catch (error) {
     console.error(error);
+
+    return [];
+  }
+}
+
+// ======================== TOKEN DE AUTENTICAÇÃO PARA AS FOTOS DOS PRODUTOS =========================
+
+export async function fetchPhotoToken() {
+  try {
+    const response = await fetch(
+      `/api/image/token`
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        "Erro ao buscar token das fotos"
+      );
+    }
+console.log("Token de fotos obtido com sucesso", data);
+
+    const data = await response.json();
+
+    return data;
+
+  } catch (error) {
+    console.error("ERRO NO SERVICE!!",error);
 
     return [];
   }

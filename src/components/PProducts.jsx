@@ -112,13 +112,13 @@ export default function Products() {
                 hover:shadow-lg
               "
             >
-              <div className="bg-gray-100 h-28 rounded mb-2 overflow-hidden flex items-center justify-center text-[10px] text-gray-400">
+              <div className="bg-gray-100 h-40 rounded mb-2 overflow-hidden flex items-center justify-center text-[10px] text-gray-400">
                 {p.image_url ? (
                   <img
                     src={p.image_url}
                     alt={p.name}
                     loading="lazy"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                 ) : (
                   <span>Sem Imagem</span>

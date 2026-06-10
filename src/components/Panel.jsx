@@ -5,12 +5,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useProducts } from "@/hooks/useProducts";
 
 export default function Panel() {
-  const { products, loading, loadProductsData } = useProducts();
+  const { products, loading, loadProductsData , setProductsPhotos } = useProducts();
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [filterCategory, setFilterCategory] = useState("");
   const [filterName, setFilterName] = useState("");
   const [filterGtin, setFilterGtin] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState({});
+  
 
   const ITEMS_PER_PAGE = 15;
 
@@ -204,19 +206,29 @@ export default function Panel() {
                   id={`image-${id}`}
                   className="hidden"
                   accept="image/*"
+                  onChange={(e) => {
+                    setSelectedFiles((prev) => ({
+                      ...prev,
+                      [p.gtin_code]: e.target.files[0],
+                      
+                    }));
+                  }}
                 />
 
                 <label
                   htmlFor={`image-${id}`}
-                  className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-1 px-2 rounded-lg transition cursor-pointer text-center text-xs"
+                  className=" bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-1 px-2 rounded-lg transition cursor-pointer text-center text-xs"
                 >
                   Selecionar
                 </label>
-
-                <button className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2 rounded-lg transition text-xs">
+{// aqui que eu devo chamar a funcao pra atualizar as fotos
+}
+                <button onClick={()=> {setProductsPhotos(selectedFiles[p.gtin_code], p.gtin_code)}} className=" bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2 rounded-lg transition text-xs">
                   Enviar
                 </button>
-
+{
+ //lebrar de colocar uma fução pra atualizar os parametros inclusive a foto 
+}
                 <button className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded-lg transition text-xs">
                   Editar
                 </button>
