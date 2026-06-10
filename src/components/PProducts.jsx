@@ -25,8 +25,7 @@ export default function Products() {
     .filter(
       (p) =>
         p.promotion_price &&
-        Number(p.promotion_price) > 0 &&
-        Number(p.promotion_price) < Number(p.price)
+        Number(p.promotion_price) <= Number(p.price)
     )
     .slice(0, 30);
 
