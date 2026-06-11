@@ -2,13 +2,40 @@
 
 import { useEffect } from "react";
 import { useProducts } from "@/hooks/useProducts";
+import { useUser } from '@/contexts/UserContext';
+
 
 export default function Products() {
   const { products, loading, loadProductsData } = useProducts();
+  const { addToCart } = useUser();
 
   useEffect(() => {
     loadProductsData();
   }, [loadProductsData]);
+
+  // Função para adicionar ao carrinho
+  const handleAddToCart = (product) => {
+    const produtoParaCarrinho = {
+      gtin: product.gtin_code || product.id,
+      nome: product.name,
+      precoNormal: product.price,
+      precoPromocional: product.promotion_price || null,
+      estoque: product.stock || 999,
+      categoria: product.category || "Promoção",
+    };
+    
+    addToCart(produtoParaCarrinho, 1);
+    
+    // Feedback visual no botão
+    const btn = document.activeElement;
+    if (btn) {
+      const originalText = btn.innerHTML;
+      btn.innerHTML = "✓ Adicionado!";
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+      }, 1000);
+    }
+  };
 
   if (loading || !products || products.length === 0) {
     return (
@@ -18,9 +45,7 @@ export default function Products() {
     );
   }
 
-  // ==========================
   // PEGA SOMENTE PRODUTOS PROMOCIONAIS
-  // ==========================
   const produtosPromocionais = products
     .filter(
       (p) =>
@@ -134,6 +159,7 @@ export default function Products() {
               {priceCorrection(p)}
 
               <button
+                onClick={() => handleAddToCart(p)}
                 className="
                   mt-2
                   bg-yellow-400
@@ -149,7 +175,7 @@ export default function Products() {
                   active:scale-95
                 "
               >
-                Carrinho
+                🛒 Carrinho
               </button>
             </div>
           ))}

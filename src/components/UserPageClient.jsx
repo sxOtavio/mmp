@@ -9,6 +9,8 @@ import PromoProducts from "@/components/PProducts";
 import Products from "@/components/promoProducts";
 import Footer from "@/components/Footer";
 import FiltredProducts from "@/components/FiltredProducts";
+import { CartDrawer } from "@/components/CartDrawer";
+import { UserProvider } from "@/contexts/UserContext"; // 👈 Importa o Provider
 
 export default function UserPageClient() {
   const [selectedCategory, setSelectedCategory] = useState("Todos");
@@ -23,14 +25,21 @@ export default function UserPageClient() {
   }, [searchParams]);
 
   return (
-    <main>
+    <UserProvider> {/* 👈 ENVOLVE TUDO AQUI */}
       <Header />
       <Hero />
-      <Categorias selectedCategory={selectedCategory} onCategoryChange={setSelectedCategory} />
-      <FiltredProducts selectedCategory={selectedCategory} searchTerm={searchTerm} />
+      <Categorias 
+        selectedCategory={selectedCategory} 
+        onCategoryChange={setSelectedCategory} 
+      />
+      <FiltredProducts 
+        selectedCategory={selectedCategory} 
+        searchTerm={searchTerm} 
+      />
       <Products />
       <PromoProducts />
       <Footer />
-    </main>
+      <CartDrawer />
+    </UserProvider>
   );
 }

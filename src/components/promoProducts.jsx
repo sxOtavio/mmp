@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { useProducts } from "@/hooks/useProducts";
+import { useUser } from '@/contexts/UserContext';
 
 function hideCard(price, promotion_price) {
   if (promotion_price && promotion_price > price) {
@@ -15,6 +16,7 @@ export default function Products() {
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
   const carouselRef = useRef(null);
+  const { addToCart } = useUser();
 
   useEffect(() => {
     loadPromoProductsData();
@@ -22,7 +24,8 @@ export default function Products() {
 
   // Configuração: 3 linhas com 4 colunas = 12 produtos por página
   const ITEMS_PER_PAGE = 12; // 3 linhas x 4 colunas
-  const totalPages = Math.ceil((promoProducts?.length || 0) / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil((promoProducts?.length || 0) / ITEMS_PER_PAGE)-1;
+
 
   // Filtra produtos válidos (com promoção menor que o preço normal)
   const validProducts = promoProducts?.filter(
@@ -67,6 +70,22 @@ export default function Products() {
       prevPage();
     }
   };
+  // Função para adicionar ao carrinho
+  const handleAddToCart = (product) => {
+  const produtoParaCarrinho = {
+    gtin: product.gtin_code || product.id,
+    nome: product.name,
+    precoNormal: product.price,
+    precoPromocional: product.promotion_price || null,
+    estoque: product.stock || 999,
+    categoria: product.category || "Produto",
+  };
+  
+  addToCart(produtoParaCarrinho, 1);
+  
+  // Feedback visual opcional
+  console.log(`✅ ${product.name} adicionado ao carrinho!`);
+};
 
   if (loading) {
     return (
@@ -91,7 +110,7 @@ export default function Products() {
     <section className="px-6 py-8 bg-gray-50">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold text-gray-800">
-          🔥 Preços promocionais atualizados, fique por dentro!
+          Preços promocionais atualizados, fique por dentro!
         </h2>
         
         {/* Indicador de páginas */}
@@ -166,8 +185,24 @@ export default function Products() {
               )}
 
               {/* Botão de compra */}
-              <button className="mt-2 w-full bg-yellow-400 hover:bg-yellow-500 transition-colors py-2 rounded-lg font-semibold text-sm">
-                Colocar no carrinho
+              <button
+                onClick={() => handleAddToCart(p)}
+                className="
+                  mt-2
+                  bg-yellow-400
+                  hover:bg-yellow-500
+                  transition-colors
+                  w-full
+                  py-1.5
+                  rounded-lg
+                  text-xs
+                  font-bold
+                  text-gray-800
+                  shadow-sm
+                  active:scale-95
+                "
+              >
+                🛒 Carrinho
               </button>
             </div>
           ))}

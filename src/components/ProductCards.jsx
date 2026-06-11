@@ -1,161 +1,43 @@
-'use client';
-import { useEffect, useState } from "react";
+"use client";
+import { useEffect, useState, useRef } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useUser } from '@/contexts/UserContext';
 
-const normalizeCategoryValue = (value) =>
-  String(value || "")
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .replace(/[\.\-_/]/g, " ")
-    .trim()
-    .toLowerCase();
-
-const CATEGORY_ALIASES = {
-  "perfum": "Higiene pessoal",
-  "perfumaria": "Higiene pessoal",
-  "hig pessoal": "Higiene pessoal",
-  "hig. pessoal": "Higiene pessoal",
-  "higiene pessoal": "Higiene pessoal",
-  "higienepessoal": "Higiene pessoal",
-  "perfum hig pessoal": "Higiene pessoal",
-  "perfum higienepessoal": "Higiene pessoal",
-  "conserva": "Conservas",
-  "conservas": "Conservas",
-  "bebida": "Bebidas",
-  "bebidas": "Bebidas",
-  "refri": "Bebidas",
-  "refrigerante": "Bebidas",
-  "frente de caixa": "Frente de caixa",
-  "frente caixa": "Frente de caixa",
-  "frente cx": "Frente de caixa",
-  "frente de cx": "Frente de caixa",
-  "frentedecaixa": "Frente de caixa",
-  "flv": "FLV",
-  "acougue": "Açougue",
-  "açougue": "Açougue"
-};
-
-function mapToCanonicalCategory(value) {
-  const normalized = normalizeCategoryValue(value);
-  return CATEGORY_ALIASES[normalized] || normalized;
+function hideCard(price, promotion_price) {
+  if (promotion_price && promotion_price > price) {
+    return "hidden";
+  }
+  return "";
 }
 
-function matchesCategory(product, selectedCategory) {
-  if (!selectedCategory || selectedCategory === "Todos") return true;
-
-  const selectedKey = mapToCanonicalCategory(selectedCategory);
-  const productCategory = String(product.category || product.categoria || "");
-
-  if (!productCategory.trim()) return false;
-
-  const categories = productCategory
-    .split(/[,;|/]+/)
-    .map(mapToCanonicalCategory)
-    .filter(Boolean);
-
-  return categories.includes(selectedKey);
-}
-
-export default function FiltredProducts({ selectedCategory = "Todos", searchTerm = "" }) {
-  const { products, loading, loadProductsData } = useProducts();
+export default function PromoProducts() {
+  const { promoProducts, loading, loadPromoProductsData } = useProducts();
+  const { addToCart } = useUser(); // 👈 Pega função do carrinho
   const [currentPage, setCurrentPage] = useState(0);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
-  const { addToCart } = useUser();
+  const carouselRef = useRef(null);
 
   useEffect(() => {
-    loadProductsData();
-  }, [loadProductsData]);
+    loadPromoProductsData();
+  }, [loadPromoProductsData]);
 
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [selectedCategory, searchTerm]);
-
-  // 👈 FUNÇÃO PARA ADICIONAR AO CARRINHO
-  const handleAddToCart = (product) => {
-    const produtoParaCarrinho = {
-      gtin: product.gtin_code || product.id,
-      nome: product.name,
-      precoNormal: product.price,
-      precoPromocional: product.promotion_price || null,
-      estoque: product.stock || 999,
-      categoria: product.category || "Produto",
-    };
-    
-    addToCart(produtoParaCarrinho, 1);
-    
-    // Feedback visual opcional
-    console.log(`✅ ${product.name} adicionado ao carrinho!`);
-  };
-
+  // Configuração: 3 linhas com 4 colunas = 12 produtos por página
   const ITEMS_PER_PAGE = 12;
+  const totalPages = Math.ceil((promoProducts?.length || 0) / ITEMS_PER_PAGE) - 1;
 
-  const validProducts =
-    products?.filter((p) => {
-      if (!p) return false;
-      if (!matchesCategory(p, selectedCategory)) return false;
+  // Filtra produtos válidos (com promoção menor que o preço normal)
+  const validProducts = promoProducts?.filter(
+    (p) => p.promotion_price && p.promotion_price < p.price
+  ) || [];
 
-      if (searchTerm.trim()) {
-        const searchLower = searchTerm.trim().toLowerCase();
-        const productName = String(p.name || "").toLowerCase();
-        const productDescription = String(p.description || "").toLowerCase();
-        const productBrand = String(p.brand || "").toLowerCase();
-        const productGtin = String(p.gtin_code || "");
-
-        return (
-          productName.includes(searchLower) ||
-          productDescription.includes(searchLower) ||
-          productBrand.includes(searchLower) ||
-          productGtin.includes(searchLower)
-        );
-      }
-
-      return true;
-    }) || [];
-
-  const totalPages = Math.ceil((validProducts?.length || 0) / ITEMS_PER_PAGE);
-
-  const priceCorrection = (p) => {
-    if (p.promotion_price == 0 || p.promotion_price == null) {
-      return (
-        <p className="text-black font-bold text-sm">
-          <br />
-          R$ {Number(p.price).toFixed(2)}
-        </p>
-      );
-    }
-
-    if (p.promotion_price && p.promotion_price < p.price) {
-      return (
-        <>
-          <p className="line-through text-gray-400 text-[10px]">
-            R$ {Number(p.price).toFixed(2)}
-          </p>
-
-          <p className="text-red-600 font-bold text-sm">
-            R$ {Number(p.promotion_price).toFixed(2)}
-          </p>
-
-          <p className="text-green-600 text-xs font-semibold">
-            {Math.round(((p.price - p.promotion_price) / p.price) * 100)}% OFF
-          </p>
-        </>
-      );
-    }
-
-    return (
-      <p className="font-bold text-sm">
-        R$ {Number(p.price).toFixed(2)}
-      </p>
-    );
-  };
-
+  // Produtos da página atual
   const currentProducts = validProducts.slice(
     currentPage * ITEMS_PER_PAGE,
     (currentPage + 1) * ITEMS_PER_PAGE
   );
 
+  // Navegação
   const nextPage = () => {
     if (currentPage < totalPages - 1) {
       setCurrentPage(currentPage + 1);
@@ -168,6 +50,7 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
     }
   };
 
+  // Touch/swipe para mobile
   const handleTouchStart = (e) => {
     setTouchStart(e.targetTouches[0].clientX);
   };
@@ -185,12 +68,29 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
     }
   };
 
+  // 👈 Função para adicionar ao carrinho adaptando os campos
+  const handleAddToCart = (product) => {
+    const produtoParaCarrinho = {
+      gtin: product.gtin_code || product.id,
+      nome: product.name,
+      precoNormal: product.price,
+      precoPromocional: product.promotion_price,
+      estoque: product.stock || 999, // se não tiver estoque, coloca um valor alto
+      categoria: product.category || "Promoção",
+    };
+    
+    addToCart(produtoParaCarrinho, 1);
+    
+    // Opcional: mostrar feedback visual
+    // toast.success(`${product.name} adicionado ao carrinho!`);
+  };
+
   if (loading) {
     return (
       <section className="px-6 py-8 bg-gray-50 rounded text-center text-gray-500">
         <div className="flex flex-col items-center justify-center gap-4">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-400"></div>
-          <span>Carregando produtos...</span>
+          <span>Carregando ofertas em promoção...</span>
         </div>
       </section>
     );
@@ -199,18 +99,18 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
   if (!validProducts || validProducts.length === 0) {
     return (
       <section className="px-6 py-8 bg-gray-50 rounded text-center text-gray-500">
-        Nenhum produto encontrado para a categoria selecionada.
+        🛒 Nenhum produto em promoção no momento.
       </section>
     );
   }
 
   return (
     <section className="px-6 py-8 bg-gray-50">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+      <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold text-gray-800">
-          {selectedCategory === "Todos" ? "Todos os produtos" : `Produtos de ${selectedCategory}`}
-          {searchTerm && ` - Busca: "${searchTerm}"`}
+          Preços promocionais atualizados, fique por dentro!
         </h2>
+        
         {totalPages > 1 && (
           <span className="text-sm text-gray-500">
             Página {currentPage + 1} de {totalPages}
@@ -218,12 +118,15 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
         )}
       </div>
 
-      <div
+      {/* Carrossel com swipe support */}
+      <div 
+        ref={carouselRef}
         className="relative"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
+        {/* Botão anterior - desktop */}
         {totalPages > 1 && (
           <button
             onClick={prevPage}
@@ -238,13 +141,15 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
           </button>
         )}
 
+        {/* Grid de produtos - 3 linhas x 4 colunas */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {currentProducts.map((p, index) => (
             <div
               key={`${p.gtin_code || p.id || index}`}
-              className="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow"
+              className={`bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow ${hideCard(p.price, p.promotion_price)}`}
             >
-              <div className="bg-gray-100 w-full h-40 rounded mb-2 overflow-hidden flex items-center justify-center text-[10px] text-gray-400">
+              {/* Imagem */}
+              <div className="bg-gray-100 h-40 rounded mb-2 overflow-hidden flex items-center justify-center text-[10px] text-gray-400">
                 {p.image_url ? (
                   <img src={p.image_url} alt={p.name} className="w-full h-full object-contain" />
                 ) : (
@@ -254,10 +159,29 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
                 )}
               </div>
 
-              <h3 className="font-bold text-sm line-clamp-2 min-h-[40px]">{p.name}</h3>
+              {/* Nome do produto */}
+              <h3 className="font-bold text-sm line-clamp-2 min-h-[40px]">
+                {p.name}
+              </h3>
 
-              {priceCorrection(p)}
+              {/* Preço antigo */}
+              <p className="line-through text-gray-400 text-sm mt-1">
+                R$ {Number(p.price).toFixed(2)}
+              </p>
 
+              {/* Preço promocional */}
+              <p className="text-red-600 font-bold text-lg">
+                R$ {Number(p.promotion_price).toFixed(2)}
+              </p>
+
+              {/* Desconto percentual */}
+              {p.price && p.promotion_price && (
+                <p className="text-green-600 text-xs font-semibold">
+                  {Math.round(((p.price - p.promotion_price) / p.price) * 100)}% OFF
+                </p>
+              )}
+
+              {/* 👈 Botão de compra COM CARRINHO */}
               <button
                 onClick={() => handleAddToCart(p)}
                 className="
@@ -281,6 +205,7 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
           ))}
         </div>
 
+        {/* Botão próximo - desktop */}
         {totalPages > 1 && (
           <button
             onClick={nextPage}
@@ -296,6 +221,7 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
         )}
       </div>
 
+      {/* Indicadores de página (dots) */}
       {totalPages > 1 && (
         <div className="flex justify-center gap-2 mt-6">
           {Array.from({ length: totalPages }).map((_, idx) => (
@@ -303,13 +229,16 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
               key={idx}
               onClick={() => setCurrentPage(idx)}
               className={`h-2 rounded-full transition-all ${
-                currentPage === idx ? "w-6 bg-yellow-400" : "w-2 bg-gray-300 hover:bg-gray-400"
+                currentPage === idx
+                  ? "w-6 bg-yellow-400"
+                  : "w-2 bg-gray-300 hover:bg-gray-400"
               }`}
             />
           ))}
         </div>
       )}
 
+      {/* Navegação mobile */}
       {totalPages > 1 && (
         <div className="flex justify-between gap-4 mt-4 md:hidden">
           <button
