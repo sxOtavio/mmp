@@ -1,4 +1,4 @@
-// app/page.js
+"use client";// app/page.js
 import dynamic from 'next/dynamic';
 import { Suspense } from 'react';
 
