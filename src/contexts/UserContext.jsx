@@ -6,9 +6,8 @@ import { useUser as useUserHook } from '@/hooks/useUser';
 
 const UserContext = createContext(null);
 
-// Valores padrão para durante o build/SSR
 const defaultUserData = {
-  auth: { loading: false, loginData: null, token: null, userType: null },
+  auth: { loading: false },
   cart: [],
   cartTotal: 0,
   cartVersion: 0,
@@ -28,18 +27,11 @@ export function UserProvider({ children }) {
 
   useEffect(() => {
     setMounted(true);
-    // Só executa o hook real no cliente
-    import('@/hooks/useUser').then(({ useUser }) => {
-      // Isso é um pouco complicado, então vamos usar uma abordagem mais simples:
-      const realUserData = useUserHook();
-      setUserData(realUserData);
-    }).catch(() => {
-      // Fallback
-      setUserData(defaultUserData);
-    });
+    // Só carrega o hook real no cliente
+    const realUserData = useUserHook();
+    setUserData(realUserData);
   }, []);
 
-  // Durante o build/SSR, retorna dados vazios
   if (!mounted) {
     return (
       <UserContext.Provider value={defaultUserData}>
