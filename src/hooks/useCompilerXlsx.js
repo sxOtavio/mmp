@@ -352,14 +352,14 @@ export function useCompilerXlsx() {
   // ------------------------------- IMPORTAÇÃO PARA O BANCO DE DADOS ----------------------------------------------------
   const importProductsData = useCallback(async () => {
     if (produtosJSON.length === 0) {
-      alert("⚠️ Aguarde o processamento da planilha ou selecione um arquivo válido!");
+      alert(" Aguarde o processamento da planilha ou selecione um arquivo válido!");
       return;
     }
 
     const promocoesCount = produtosJSON.filter(p => p.precoPromocional).length;
     
-    console.log(`🚀 Iniciando importação de ${produtosJSON.length} produtos...`);
-    console.log(`📊 Produtos em promoção: ${promocoesCount}`);
+    console.log(`Iniciando importação de ${produtosJSON.length} produtos...`);
+    console.log(`Produtos em promoção: ${promocoesCount}`);
 
     try {
       setLoading(true);
@@ -367,8 +367,8 @@ export function useCompilerXlsx() {
 
       for (let i = 0; i < produtosJSON.length; i += TAMANHO_LOTE) {
         const lote = produtosJSON.slice(i, i + TAMANHO_LOTE);
-        console.log(`📤 Enviando lote ${Math.floor(i / TAMANHO_LOTE) + 1}/${Math.ceil(produtosJSON.length / TAMANHO_LOTE)} (${lote.length} produtos)...`);
-        console.log(`   Promoções neste lote: ${lote.filter((p) => p.precoPromocional).length}`);
+        console.log(` Enviando lote ${Math.floor(i / TAMANHO_LOTE) + 1}/${Math.ceil(produtosJSON.length / TAMANHO_LOTE)} (${lote.length} produtos)...`);
+        console.log(` Promoções neste lote: ${lote.filter((p) => p.precoPromocional).length}`);
 
         await fetchPostXlsxFile(lote);
       }
