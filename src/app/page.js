@@ -9,7 +9,7 @@ import { CartDrawer } from "@/components/CartDrawer";
 import { UserProvider } from "@/contexts/UserContext"; // 👈 Importa o Provider
 export default function Home() {
   return (
-    <UserProvider>
+    
     <main>
       <Header />
       <Hero />
@@ -18,6 +18,6 @@ export default function Home() {
       <Footer />
        <CartDrawer />
     </main>
-    </UserProvider>
+    
   );
 }
