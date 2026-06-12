@@ -1,3 +1,4 @@
+// components/UserPageClient.jsx
 'use client';
 
 import { useState, useEffect } from "react";
@@ -10,12 +11,16 @@ import Products from "@/components/promoProducts";
 import Footer from "@/components/Footer";
 import FiltredProducts from "@/components/FiltredProducts";
 import { CartDrawer } from "@/components/CartDrawer";
-import { UserProvider } from "@/contexts/UserContext"; // 👈 Importa o Provider
 
 export default function UserPageClient() {
+  const [mounted, setMounted] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("Todos");
   const [searchTerm, setSearchTerm] = useState("");
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const search = searchParams.get("search");
@@ -24,8 +29,12 @@ export default function UserPageClient() {
     }
   }, [searchParams]);
 
+  if (!mounted) {
+    return <div>Carregando...</div>;
+  }
+
   return (
-    <UserProvider> {/* 👈 ENVOLVE TUDO AQUI */}
+    <>
       <Header />
       <Hero />
       <Categorias 
@@ -40,6 +49,6 @@ export default function UserPageClient() {
       <PromoProducts />
       <Footer />
       <CartDrawer />
-    </UserProvider>
+    </>
   );
 }
