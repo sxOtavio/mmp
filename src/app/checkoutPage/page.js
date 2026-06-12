@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import UserPageClient from "@/components/UserPageClient";
+import CheckoutClient from "@/components/clients/CheckoutPageClient";
 
 export default function Page() {
   return (
     <Suspense fallback={<div>Carregando...</div>}>
-      <UserPageClient />
+      <CheckoutClient />
     </Suspense>
   );
 }

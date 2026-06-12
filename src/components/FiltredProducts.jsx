@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useUser } from '@/contexts/UserContext';
 
+
 const normalizeCategoryValue = (value) =>
   String(value || "")
     .normalize("NFD")
@@ -72,7 +73,7 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
     setCurrentPage(0);
   }, [selectedCategory, searchTerm]);
 
-  // 👈 FUNÇÃO PARA ADICIONAR AO CARRINHO
+    // Função para adicionar ao carrinho
   const handleAddToCart = (product) => {
     const produtoParaCarrinho = {
       gtin: product.gtin_code || product.id,
@@ -80,13 +81,20 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
       precoNormal: product.price,
       precoPromocional: product.promotion_price || null,
       estoque: product.stock || 999,
-      categoria: product.category || "Produto",
+      categoria: product.category || "Promoção",
     };
     
     addToCart(produtoParaCarrinho, 1);
     
-    // Feedback visual opcional
-    console.log(`✅ ${product.name} adicionado ao carrinho!`);
+    // Feedback visual no botão
+    const btn = document.activeElement;
+    if (btn) {
+      const originalText = btn.innerHTML;
+      btn.innerHTML = "✓ Adicionado!";
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+      }, 1000);
+    }
   };
 
   const ITEMS_PER_PAGE = 12;

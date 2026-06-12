@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext'; // Use o contexto
+import { useRouter } from "next/navigation";
 
 export function CartDrawer() {
   const { cart, cartTotal, updateQuantity, removeFromCart, clearCart, setCart } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [localVersion, setLocalVersion] = useState(0);
+   const router = useRouter();
 
   // Verifica localStorage periodicamente
   useEffect(() => {
@@ -141,7 +143,7 @@ export function CartDrawer() {
                   >
                     Limpar
                   </button>
-                  <button className="flex-1 bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 transition">
+                  <button onClick={()=> {router.push("/checkoutPage")}} className="flex-1 bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 transition">
                     Finalizar
                   </button>
                 </div>

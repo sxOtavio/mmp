@@ -12,7 +12,7 @@ function hideCard(price, promotion_price) {
 
 export default function PromoProducts() {
   const { promoProducts, loading, loadPromoProductsData } = useProducts();
-  const { addToCart } = useUser(); // 👈 Pega função do carrinho
+  const { addToCart } = useUser(); 
   const [currentPage, setCurrentPage] = useState(0);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);

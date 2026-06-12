@@ -1,4 +1,4 @@
-"use client";
+
 import { useEffect, useState, useRef } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useUser } from '@/contexts/UserContext';
