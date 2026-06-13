@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { useRouter } from 'next/navigation';
-import { CartDrawer } from "@/components/CartDrawer";
+import { CartDrawer } from "@/components/user/CartDrawer";
 import Link from 'next/link';
 
 export default function CheckoutPageClient() {
@@ -68,7 +68,7 @@ export default function CheckoutPageClient() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-50 to-orange-50">
         <div className="text-center bg-white p-12 rounded-2xl shadow-xl max-w-md">
           <div className="text-8xl mb-6 animate-bounce">🛒</div>
-          <p className="text-gray-500 text-lg mb-6">Seu carrinho está vazio</p>
+          <p className="text-black text-lg mb-6">Seu carrinho está vazio</p>
           <Link href="/" className="inline-block bg-yellow-500 text-white px-8 py-3 rounded-xl font-medium hover:bg-yellow-600 transition-transform hover:scale-105">
             Continuar comprando
           </Link>
@@ -85,16 +85,15 @@ export default function CheckoutPageClient() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
             <Link href="/" className="text-2xl font-bold text-red-600 flex items-center gap-2">
-              <span className="text-3xl">🛒</span>
-              Supermercado
+                            Supermercado Preferido
             </Link>
             <div className="flex items-center gap-4">
               <div className="bg-yellow-100 px-4 py-2 rounded-full">
-                <span className="text-sm text-gray-600">Itens: </span>
+                <span className="text-sm text-black">Itens: </span>
                 <span className="font-semibold text-red-600">{cart.reduce((s, i) => s + i.quantity, 0)}</span>
               </div>
               <div className="bg-green-100 px-4 py-2 rounded-full">
-                <span className="text-sm text-gray-600">Total: </span>
+                <span className="text-sm text-black">Total: </span>
                 <span className="font-semibold text-green-600">R$ {cartTotal.toFixed(2)}</span>
               </div>
             </div>
@@ -179,7 +178,7 @@ export default function CheckoutPageClient() {
             ) : (
               <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-yellow-100">
                 <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-6 py-4">
-                  <h2 className="text-white font-semibold text-lg">💳 Pagamento</h2>
+                  <h2 className="text-white font-semibold text-lg">Forma de Pagamento</h2>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -197,18 +196,9 @@ export default function CheckoutPageClient() {
                     ))}
                   </div>
 
-                  {formData.pagamento === 'credito' && (
+                  {formData.pagamento === 'dinheiro' && (
                     <div className="bg-yellow-50 rounded-xl p-5 space-y-4">
-                      <input type="text" placeholder="Número do cartão" className="w-full border-2 border-gray-200 rounded-xl px-4 py-3" />
-                      <div className="grid grid-cols-2 gap-4">
-                        <input type="text" placeholder="Validade" className="border-2 border-gray-200 rounded-xl px-4 py-3" />
-                        <input type="text" placeholder="CVV" className="border-2 border-gray-200 rounded-xl px-4 py-3" />
-                      </div>
-                      <select name="parcelas" value={formData.parcelas} onChange={handleInputChange} className="w-full border-2 border-gray-200 rounded-xl px-4 py-3">
-                        <option value="1">1x de R$ {cartTotal.toFixed(2)}</option>
-                        <option value="2">2x de R$ {getValorParcela()}</option>
-                        <option value="3">3x de R$ {getValorParcela()}</option>
-                      </select>
+                      <input type="number" placeholder="Troco para quanto?" className="w-full border-2 border-gray-200 rounded-xl px-4 py-3" />
                     </div>
                   )}
 

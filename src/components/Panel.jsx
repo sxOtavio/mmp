@@ -3,6 +3,7 @@
 import PanelToolbar from "./PanelToolbar";
 import { useEffect, useMemo, useState } from "react";
 import { useProducts } from "@/hooks/useProducts";
+import { useUser } from '@/hooks/useUser';
 
 export default function Panel() {
   const { products, loading, loadProductsData , setProductsPhotos } = useProducts();
@@ -12,6 +13,7 @@ export default function Panel() {
   const [filterName, setFilterName] = useState("");
   const [filterGtin, setFilterGtin] = useState("");
   const [selectedFiles, setSelectedFiles] = useState({});
+   const { validateToken, checkTokenAndRedirect, isTokenExpiringSoon } = useUser();
   
 
   const ITEMS_PER_PAGE = 15;
@@ -48,7 +50,31 @@ export default function Panel() {
     setFilterGtin("");
     setCurrentPage(1);
   };
+// ============== TOKEN
 
+  
+  // Verificar token manualmente
+  const handleCheckToken = async () => {
+    const result = await validateToken();
+    if (result.valid) {
+      console.log("Token válido!", result.decoded);
+    } else {
+      console.log("Token inválido:", result.error);
+    }
+  };
+  
+  // Verificar e redirecionar se inválido
+  useEffect(() => {
+    checkTokenAndRedirect('/loginPage');
+  }, []);
+  
+  // Mostrar aviso se token está perto de expirar
+  useEffect(() => {
+    if (isTokenExpiringSoon()) {
+      console.log("⚠️ Seu token vai expirar em breve!");
+      // Mostrar um toast/notificação
+    }
+  }, [isTokenExpiringSoon]);
   return (
     <div className="bg-yellow-400 rounded-2xl w-full p-6 shadow-xl">
       <h3 className="text-2xl font-bold text-black mb-6">

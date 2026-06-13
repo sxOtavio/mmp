@@ -1,11 +1,11 @@
 'use client';
 
 import Header from "@/components/Header";
-import Hero from "@/components/Hero";
-import Categorias from "@/components/Categories";
-import PromoProducts from "@/components/PProducts";
+import Hero from "@/components/user/Hero";
+import Categorias from "@/components/user/Categories";
+import PromoProducts from "@/components/user/PProducts";
 import Footer from "@/components/Footer";
-import { CartDrawer } from "@/components/CartDrawer";
+import { CartDrawer } from "@/components/user/CartDrawer";
 import { UserProvider } from "@/contexts/UserContext"; // 👈 Importa o Provider
 export default function Home() {
   return (

@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from "next/navigation";
-import { fetchUsers } from "../services/userSevices"; 
-import { fetchRegisterUsers } from "../services/userSevices";
+import { fetchUsers, fetchRegisterUsers } from "../services/userSevices";
+import { 
+  verifyToken, 
+  refreshToken, 
+  decodeToken, 
+  isTokenExpired, 
+  getTokenRemainingTime 
+} from "../services/userSevices";
 
 // ================ VALIDADOR DE CPF ======================
 export function validCPF(cpf) {
@@ -36,9 +42,36 @@ export function useUser() {
   const [auth, setAuth] = useState({
     loginData: null,   
     token: null, 
-    userType: null,      
+    userRole: null,
+    tokenInfo: null,      
     loading: false,    
   });
+
+  // ============ VERIFICAR TOKEN AO INICIAR ============
+  useEffect(() => {
+    const savedToken = localStorage.getItem('@token');
+    const savedUser = localStorage.getItem('@user');
+    
+    if (savedToken && !isTokenExpired(savedToken)) {
+      const tokenInfo = decodeToken(savedToken);
+      const userData = savedUser ? JSON.parse(savedUser) : null;
+      const userRole = tokenInfo?.role || userData?.user?.role || userData?.role;
+      
+      setAuth({
+        loginData: userData,
+        token: savedToken,
+        userRole: userRole,
+        tokenInfo: tokenInfo,
+        loading: false,
+      });
+      
+      console.log("✅ Token recuperado do localStorage, role:", userRole);
+    } else if (savedToken && isTokenExpired(savedToken)) {
+      console.log("⚠️ Token expirado, limpando...");
+      localStorage.removeItem('@token');
+      localStorage.removeItem('@user');
+    }
+  }, []);
 
   // ============ PARTE 2: CARRINHO DE COMPRAS ============
   const [cart, setCart] = useState([]);
@@ -140,18 +173,40 @@ export function useUser() {
 
     try {
       const userData = await fetchUsers(user, password);
+      
+      console.log("userData.user:", userData?.user);
+      console.log("userData.token:", userData?.token);
+      
+      const token = userData?.token || null;
+      const userRole = userData?.user?.role || null;
+    
+      if (token) {
+        localStorage.setItem('@token', token);
+      }
+      if (userData?.user) {
+        localStorage.setItem('@user', JSON.stringify(userData.user));
+      }
+      
       setAuth({
         loginData: userData,
-        token: userData?.token || null,
-        userType: userData?.userType || null,
+        token: token,
+        userRole: userRole,
+        tokenInfo: token ? decodeToken(token) : null,
         loading: false,
       });
-      
-      console.log("LOGIN BEM SUCEDIDO, BEM VINDO!!", userData);
-      
-      if(userData?.role === "admin") {
+
+      console.log("✅ LOGIN BEM SUCEDIDO!");
+      console.log("👤 Role:", userRole);
+ 
+      if(userRole === "admin") {
         router.push("/infoPanelPage");
-      } else { 
+      } 
+
+      if(userRole === "delivery"){
+        router.push("/delivery");
+      }
+
+      if(userRole === "user"){
         router.push("/userPage");
       }
     } catch (error) {
@@ -196,11 +251,6 @@ export function useUser() {
     
     try {
       const userData = await fetchRegisterUsers(user, password, name, birthDate, phone, address, city, state, zip_code, cpf);
-      setAuth({
-        loginData: userData,
-        token: userData?.token || null, 
-        loading: false,
-      });
       router.push("/loginPage");
     } catch (error) {
       console.error("Erro ao registrar usuário:", error);
@@ -208,11 +258,181 @@ export function useUser() {
     }
   };
 
+  // ============ LOGOUT ============
+  const logout = useCallback(() => {
+    console.log("🚪 Fazendo logout...");
+    localStorage.removeItem('@token');
+    localStorage.removeItem('@user');
+    setAuth({
+      loginData: null,
+      token: null,
+      userRole: null,
+      tokenInfo: null,
+      loading: false,
+    });
+    router.push('/loginPage');
+  }, [router]);
+
+  // ============ FUNÇÕES DE VERIFICAÇÃO ============
+  const isAuthenticated = useCallback(() => {
+    const token = auth.token || localStorage.getItem('@token');
+    
+    if (!token) return false;
+    if (isTokenExpired(token)) return false;
+    
+    return true;
+  }, [auth.token]);
+
+  const hasRole = useCallback((requiredRole) => {
+    const userRole = auth.userRole;
+    
+    if (!requiredRole) return true;
+    if (!userRole) return false;
+    
+    return userRole === requiredRole;
+  }, [auth.userRole]);
+
+  const requireAuth = useCallback(async (redirectTo = '/loginPage') => {
+    if (!isAuthenticated()) {
+      await logout();
+      router.push(redirectTo);
+      return false;
+    }
+    return true;
+  }, [isAuthenticated, logout, router]);
+
+  const requireRole = useCallback((requiredRole, redirectTo = '/userPage') => {
+    if (!hasRole(requiredRole)) {
+      router.push(redirectTo);
+      return false;
+    }
+    return true;
+  }, [hasRole, router]);
+
+  // ============ VALIDAÇÃO DE TOKEN ============
+  const validateToken = useCallback(async () => {
+    const token = auth.token || localStorage.getItem('@token');
+    
+    if (!token) {
+      console.log("❌ validateToken: Nenhum token encontrado");
+      return { valid: false, error: "Token não encontrado" };
+    }
+    
+    if (isTokenExpired(token)) {
+      console.log("❌ validateToken: Token expirado localmente");
+      await logout();
+      return { valid: false, error: "Token expirado" };
+    }
+    
+    try {
+      const result = await verifyToken(token);
+      
+      if (result.valid) {
+        console.log("✅ validateToken: Token válido");
+        const tokenInfo = decodeToken(token);
+        setAuth(prev => ({
+          ...prev,
+          tokenInfo: tokenInfo,
+          userRole: tokenInfo?.role || prev.userRole,
+        }));
+        
+        return { valid: true, decoded: result.decoded };
+      } else {
+        console.log("❌ validateToken: Token inválido no backend");
+        await logout();
+        return { valid: false, error: result.error };
+      }
+    } catch (error) {
+      console.error("❌ validateToken: Erro na verificação", error);
+      return { valid: false, error: error.message };
+    }
+  }, [auth.token, logout]);
+
+  const checkTokenAndRedirect = useCallback(async (redirectTo = '/loginPage') => {
+    const result = await validateToken();
+    
+    if (!result.valid) {
+      console.log("🔒 checkTokenAndRedirect: Token inválido, redirecionando");
+      router.push(redirectTo);
+      return false;
+    }
+    
+    console.log("✅ checkTokenAndRedirect: Token válido");
+    return true;
+  }, [validateToken, router]);
+
+  const isTokenExpiringSoon = useCallback(() => {
+    const token = auth.token || localStorage.getItem('@token');
+    const remainingTime = getTokenRemainingTime(token);
+    
+    if (remainingTime <= 0) return false;
+    return remainingTime <= 5;
+  }, [auth.token]);
+
+  const autoRefreshToken = useCallback(async () => {
+    const token = auth.token || localStorage.getItem('@token');
+    
+    if (!token) return false;
+    if (!isTokenExpiringSoon()) return false;
+    
+    console.log("🔄 autoRefreshToken: Renovando token...");
+    
+    try {
+      const result = await refreshToken();
+      
+      if (result.token) {
+        localStorage.setItem('@token', result.token);
+        setAuth(prev => ({
+          ...prev,
+          token: result.token,
+          tokenInfo: decodeToken(result.token),
+        }));
+        console.log("✅ autoRefreshToken: Token renovado com sucesso");
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error("❌ autoRefreshToken: Erro ao renovar", error);
+      return false;
+    }
+  }, [auth.token, isTokenExpiringSoon]);
+
+  const setupTokenValidation = useCallback(() => {
+    const interval = setInterval(async () => {
+      const isValid = await validateToken();
+      
+      if (!isValid.valid) {
+        console.log("⚠️ Token inválido detectado na verificação periódica");
+        clearInterval(interval);
+      }
+    }, 60000);
+    
+    return () => clearInterval(interval);
+  }, [validateToken]);
+
+  useEffect(() => {
+    if (auth.token) {
+      const cleanup = setupTokenValidation();
+      return cleanup;
+    }
+  }, [auth.token, setupTokenValidation]);
+
   return {
     //====== AUTH/USUÁRIO ============
     auth,
     loadUser,
     registerUser,
+    logout,
+    isAuthenticated,
+    hasRole,
+    requireAuth,
+    requireRole,
+    validateToken,
+    checkTokenAndRedirect,
+    isTokenExpiringSoon,
+    autoRefreshToken,
+    
     //==== CARRINHO ============
     cart,
     cartTotal,

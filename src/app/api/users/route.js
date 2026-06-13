@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { pool } from "../../../lib/db"; // Ajuste os pontos (../) se o arquivo mudar de lugar
-import bcrypt from "bcryptjs"; // Alterado para bcryptjs
-
-// ROTA DE LOGIN (POST)
+import { pool } from "../../../lib/db";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 export async function POST(request) {
   let client;
@@ -16,7 +15,6 @@ export async function POST(request) {
       return NextResponse.json({ error: "Campos obrigatórios ausentes" }, { status: 400 });
     }
 
-    // Busca o usuário pelo e-mail
     const result = await client.query("SELECT * FROM users WHERE email = $1", [username]);
     
     if (result.rows.length === 0) {
@@ -24,18 +22,29 @@ export async function POST(request) {
     }
 
     const usuarioEncontrado = result.rows[0];
-    console.log("Usuário encontrado:", usuarioEncontrado);
-    // Compara a senha digitada com o hash do banco de dados
     const validation = await bcrypt.compare(password, usuarioEncontrado.password_hash);
 
     if (!validation) {
       return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
     }
 
-    // Remove dados sensíveis antes de responder ao frontend
+    // Gera o token COM o role
+    const token = jwt.sign(
+      { 
+        userId: usuarioEncontrado.id,
+        email: usuarioEncontrado.email,
+        role: usuarioEncontrado.role  // 👈 IMPORTANTE
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
     const { password_hash, ...dadosSeguros } = usuarioEncontrado;
-console.log("dados recuperados",dadosSeguros)
-    return NextResponse.json(dadosSeguros);
+
+    return NextResponse.json({
+      user: dadosSeguros,
+      token: token,
+    });
 
   } catch (error) {
     console.error("Erro no servidor durante login:", error);

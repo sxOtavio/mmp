@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Header from "@/components/Header";
-import Hero from "@/components/Hero";
-import Categorias from "@/components/Categories";
-import PromoProducts from "@/components/PProducts";
-import Products from "@/components/promoProducts";
+import Hero from "@/components/user/Hero";
+import Categorias from "@/components/user/Categories";
+import PromoProducts from "@/components/user/PProducts";
+import Products from "@/components/user/promoProducts";
 import Footer from "@/components/Footer";
-import FiltredProducts from "@/components/FiltredProducts";
-import { CartDrawer } from "@/components/CartDrawer";
+import FiltredProducts from "@/components/user/FiltredProducts";
+import { CartDrawer } from "@/components/user/CartDrawer";
 
 export default function UserPageClient() {
   const [selectedCategory, setSelectedCategory] = useState("Todos");

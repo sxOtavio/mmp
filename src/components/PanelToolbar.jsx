@@ -2,6 +2,8 @@
 import React, { useState, useMemo } from "react";
 import { useCompilerXlsx } from "@/hooks/useCompilerXlsx";
 
+//tenho q cliar uma rota que altera a permissao dos usuarios para admin e motoboy
+
 export default function PanelToolbar() {
   const { handleFileChange, importProductsData, loading, produtosJSON, produtosPorCategoria } = useCompilerXlsx();
   const [file, setFile] = useState(null);
@@ -83,6 +85,9 @@ export default function PanelToolbar() {
         </button>
         <button className="bg-yellow-400 hover:bg-yellow-600 hover:scale-105 transition-transform text-black font-bold py-1 px-4 rounded">
           Panfleto
+        </button>
+        <button className="bg-yellow-400 hover:bg-yellow-600 hover:scale-105 transition-transform text-black font-bold py-1 px-4 rounded">
+          Fechar Loja
         </button>
       </div>
 
