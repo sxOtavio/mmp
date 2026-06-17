@@ -6,7 +6,7 @@ import {
   refreshToken, 
   decodeToken, 
   isTokenExpired, 
-  getTokenRemainingTime 
+  getTokenRemainingTime, getCurrentUser
 } from "../services/userSevices";
 
 // ================ VALIDADOR DE CPF ======================
@@ -65,9 +65,9 @@ export function useUser() {
         loading: false,
       });
       
-      console.log("✅ Token recuperado do localStorage, role:", userRole);
+      console.log(" Token recuperado do localStorage, role:", userRole);
     } else if (savedToken && isTokenExpired(savedToken)) {
-      console.log("⚠️ Token expirado, limpando...");
+      console.log(" Token expirado, limpando...");
       localStorage.removeItem('@token');
       localStorage.removeItem('@user');
     }
@@ -80,12 +80,12 @@ export function useUser() {
 
   // Carregar carrinho do localStorage ao iniciar
   useEffect(() => {
-    console.log('🔁 useUser - Carregando carrinho do localStorage');
+    console.log(' useUser - Carregando carrinho do localStorage');
     const savedCart = localStorage.getItem('@cart');
     if (savedCart) {
       const parsedCart = JSON.parse(savedCart);
       setCart(parsedCart);
-      console.log('📦 Carrinho carregado:', parsedCart.length, 'itens');
+      console.log(' Carrinho carregado:', parsedCart.length, 'itens');
     }
   }, []);
 
@@ -108,7 +108,7 @@ export function useUser() {
 
   // Adicionar produto ao carrinho
   const addToCart = useCallback((produto, quantity = 1) => {
-    console.log('🔵 addToCart CHAMADO! Produto:', produto.nome);
+    console.log('addToCart CHAMADO! Produto:', produto.nome);
     
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.gtin === produto.gtin);
@@ -127,7 +127,7 @@ export function useUser() {
         }];
       }
       
-      console.log('📦 Carrinho agora tem:', newCart.length, 'itens');
+      console.log('Carrinho agora tem:', newCart.length, 'itens');
       return newCart;
     });
   }, []);
@@ -167,7 +167,7 @@ export function useUser() {
     return item?.quantity || 0;
   }, [cart]);
 
-  // ============ PARTE 3: FUNÇÕES DE LOGIN/REGISTRO ============
+  // ============ FUNÇÕES DE LOGIN/REGISTRO ============
   const loadUser = async (user, password) => {
     setAuth((prev) => ({ ...prev, loading: true }));
 
@@ -195,7 +195,7 @@ export function useUser() {
         loading: false,
       });
 
-      console.log("✅ LOGIN BEM SUCEDIDO!");
+      console.log("LOGIN BEM SUCEDIDO!");
       console.log("👤 Role:", userRole);
  
       if(userRole === "admin") {
@@ -330,6 +330,10 @@ export function useUser() {
       if (result.valid) {
         console.log("✅ validateToken: Token válido");
         const tokenInfo = decodeToken(token);
+
+        console.log("TOKEN RECUPERADO", token);
+        
+        console.log("USUARIO RECUPERADO", tokenInfo);
         setAuth(prev => ({
           ...prev,
           tokenInfo: tokenInfo,
@@ -418,6 +422,22 @@ export function useUser() {
     }
   }, [auth.token, setupTokenValidation]);
 
+  //================ para obter dados dos usuarios no checkout ===============
+  const loadCurrentUser = async () => {
+  try {
+    const user = await getCurrentUser(auth.token);
+
+    setAuth(prev => ({
+      ...prev,
+      currentUser: user,
+    }));
+
+    return user;
+  } catch (error) {
+    console.error(error);
+  }
+};
+
   return {
     //====== AUTH/USUÁRIO ============
     auth,
@@ -432,6 +452,7 @@ export function useUser() {
     checkTokenAndRedirect,
     isTokenExpiringSoon,
     autoRefreshToken,
+    loadCurrentUser,
     
     //==== CARRINHO ============
     cart,

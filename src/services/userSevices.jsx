@@ -173,8 +173,9 @@ export async function refreshToken() {
   }
 }
 
-// Obter informações do usuário pelo token
-export async function getUserFromToken(token) {
+// ====== Obter informações do usuário pelo token ================
+
+export async function getCurrentUser(token) {
   try {
     const response = await fetch('/api/auth/me', {
       method: 'GET',
@@ -196,3 +197,4 @@ export async function getUserFromToken(token) {
     throw error;
   }
 }
+

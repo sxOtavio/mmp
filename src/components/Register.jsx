@@ -12,11 +12,23 @@ export default function Register() {
     const [birthDate, setBirthDate] = useState("");
     const [phone, setPhone] = useState("");
     const [address, setAddress] = useState("");
+    const [region, setRegion] = useState("");         // fantando e esse é o bairro
+    const [number, setNumber] = useState("");         // fantando
+    const [complement, setComplement] = useState("");// fantando
     const [city, setCity] = useState("");
     const [state, setState] = useState("");
     const [zip_code, setZip_code] = useState("");
     const [cpf, setCpf] = useState("");
-
+/*   nome: "",
+    email: "",
+    telefone: "",
+    endereco: "",
+    numero: "",      
+    complemento: "", 
+    bairro: "",      // fantando
+    cidade: "",
+    cep: "",
+    */
      const handleRegister = () => {
     if (!user || !password || !confirmPassword || !name || !birthDate || !phone || !address || !city || !state || !zip_code || !cpf) {
       alert("Preencha todos os campos!");
@@ -24,8 +36,10 @@ export default function Register() {
     }
     registerUser(user, password, confirmPassword, name, birthDate, phone, address, city, state, zip_code, cpf);
   };
-    
-  return (
+
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Terminar de popular os faltantes !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  
+    return (
     <section className="bg-yellow-400 px-6 rounded  flex items-center justify-center gap-15">
       <div className="bg-yellow-400  text-black p-10px flex flex-col gap-10px">
         <div className="bg-yellow-400 text-black p-10px gap-10px">  
@@ -37,6 +51,8 @@ export default function Register() {
           <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setPassword(e.target.value)} value={password} type="password" name="password" id="password" placeholder="  Senha" />
           <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setConfirmPassword(e.target.value)} value={confirmPassword} type="password" name="confirmPassword" id="confirmPassword" placeholder="  Confirmar Senha" />
           <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setAddress(e.target.value)} value={address} type="text" name="address" id="address" placeholder="  Endereço" />
+          <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setAddress(e.target.value)} value={number} type="text" name="number" id="number" placeholder="  Numero" />
+          <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setAddress(e.target.value)} value={complement} type="text" name="complement" id="complement" placeholder="  Complemento" />
           <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setCity(e.target.value)} value={city} type="text" name="city" id="city" placeholder="  Cidade" />
           <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setState(e.target.value)} value={state} type="text" name="state" id="state" placeholder="  Estado" />
           <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setZip_code(e.target.value)} value={zip_code} type="text" name="zip_code" id="zip_code" placeholder="  CEP" />

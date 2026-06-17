@@ -21,7 +21,7 @@ export async function POST(request) {
 
 
     // Insere o usuário no banco de dados
-    const result = await client.query("INSERT INTO users (email, password_hash, name, phone, address, city, state, zip_code) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *", [username, hashedPassword, name, phone, address, city, state, zip_code]);
+    const result = await client.query("INSERT INTO users (email, password_hash, name, phone, address, city, state, zip_code) VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9) RETURNING *", [username, hashedPassword, name, phone, address, city, state, zip_code, cpf]);
     
     if (result.rows.length === 0) {
       return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
