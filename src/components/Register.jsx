@@ -34,7 +34,7 @@ export default function Register() {
       alert("Preencha todos os campos!");
       return;
     }
-    registerUser(user, password, confirmPassword, name, birthDate, phone, address, city, state, zip_code, cpf);
+    registerUser(user, password, confirmPassword, name, birthDate, phone, address ,complement ,number ,region , city, state, zip_code, cpf);
   };
 
     //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Terminar de popular os faltantes !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -51,8 +51,9 @@ export default function Register() {
           <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setPassword(e.target.value)} value={password} type="password" name="password" id="password" placeholder="  Senha" />
           <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setConfirmPassword(e.target.value)} value={confirmPassword} type="password" name="confirmPassword" id="confirmPassword" placeholder="  Confirmar Senha" />
           <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setAddress(e.target.value)} value={address} type="text" name="address" id="address" placeholder="  Endereço" />
-          <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setAddress(e.target.value)} value={number} type="text" name="number" id="number" placeholder="  Numero" />
-          <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setAddress(e.target.value)} value={complement} type="text" name="complement" id="complement" placeholder="  Complemento" />
+          <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setNumber(e.target.value)} value={number} type="text" name="number" id="number" placeholder="  Numero" />
+          <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setComplement(e.target.value)} value={complement} type="text" name="complement" id="complement" placeholder="  Complemento" />
+           <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setRegion(e.target.value)} value={region} type="text" name="region" id="region" placeholder="  Bairro" />
           <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setCity(e.target.value)} value={city} type="text" name="city" id="city" placeholder="  Cidade" />
           <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setState(e.target.value)} value={state} type="text" name="state" id="state" placeholder="  Estado" />
           <input className=" bg-white text-black pb-3 m-1 rounded-lg border border-gray-300" onChange={(e) => setZip_code(e.target.value)} value={zip_code} type="text" name="zip_code" id="zip_code" placeholder="  CEP" />

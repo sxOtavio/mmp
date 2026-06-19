@@ -32,6 +32,9 @@ export async function GET(request) {
         cpf,
         phone,
         address,
+        complement ,
+        number ,
+        region ,
         city,
         zip_code
       FROM users

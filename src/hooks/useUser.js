@@ -203,7 +203,7 @@ export function useUser() {
       } 
 
       if(userRole === "delivery"){
-        router.push("/delivery");
+        router.push("/deliveryPage");
       }
 
       if(userRole === "user"){
@@ -214,8 +214,8 @@ export function useUser() {
       setAuth((prev) => ({ ...prev, loading: false }));
     }
   };
-
-  const registerUser = async (user, password, confirmPassword, name, birthDate, phone, address, city, state, zip_code, cpf) => {
+// ----------- REGISTRO ------------------------
+  const registerUser = async (user, password, confirmPassword, name, birthDate, phone, address ,complement ,number ,region , city, state, zip_code, cpf) => {
     setAuth((prev) => ({ ...prev, loading: true }));
     
     const cpfRegex = /^\d{11}$/;
@@ -250,7 +250,7 @@ export function useUser() {
     }
     
     try {
-      const userData = await fetchRegisterUsers(user, password, name, birthDate, phone, address, city, state, zip_code, cpf);
+      const userData = await fetchRegisterUsers(user, password, name, birthDate, phone, address ,complement ,number ,region,  city, state, zip_code, cpf);
       router.push("/loginPage");
     } catch (error) {
       console.error("Erro ao registrar usuário:", error);

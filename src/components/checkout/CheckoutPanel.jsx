@@ -3,11 +3,13 @@
 
 import { useEffect, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useDelivery } from "@/hooks/useCheckout";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function CheckoutPanel() {
   const {loadCurrentUser, cart, cartTotal, clearCart, user } = useUser();
+  const{loadDelivery}=useDelivery();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
@@ -47,6 +49,9 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
     email: user.email,
     telefone: user.phone,
     endereco: user.address,
+    numero: user.number,
+    complemento: user.complement,
+    bairro: user.region,
     cidade: user.city,
     cep: user.zip_code
   }));
@@ -55,15 +60,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
   faltou pensar se a pessoa nao tiver logada
   como ele responde
 
-  'nome: "",
-    email: "",
-    telefone: "",
-    endereco: "",
-    numero: "",      vish nao ta no banco
-    complemento: "", vish nao ta no banco
-    bairro: "",      vish nao ta no banco
-    cidade: "",
-    cep: "",
+  faltou terminar o cpf na nota, ele ja recupera o cpf do banco
 
     */
 
@@ -80,7 +77,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
     }
     setStep(2);
   };
-
+// =========== AQUI ELE MANDA PRO USE DELIVERY E COMEÇA A TRATAR O PEDIDO ===============
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -91,10 +88,15 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
         itens: cart,
         total: cartTotal,
       });
+  //----- chamando função de submit
+
+      loadDelivery(formData,cart,cartTotal);
+
       alert("✅ Pedido finalizado com sucesso!");
-      clearCart();
-      router.push("/pedido-confirmado");
+     // clearCart();
+      //router.push("/pedido-confirmado");
     }, 1500);
+
   };
 
   const getValorParcela = () => {
@@ -292,7 +294,11 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                         className="w-full border-2 border-gray-200 rounded-xl px-4 py-3"
                       />
                     </div>
+
                   </div>
+                    <div className="grid lg:grid-cols-3 ">
+                      <input type="checkbox" name="" id="" /><h2>Marque se desejar CPF na nota</h2>
+                    </div>
                   <div className="flex justify-end">
                     <button
                       type="submit"
@@ -305,7 +311,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
               </div>
             ) : (
               <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-yellow-100">
-                <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-6 py-4">
+                <div className="bg-yellow-500 px-6 py-4">
                   <h2 className="text-white font-semibold text-lg">
                     Forma de Pagamento
                   </h2>

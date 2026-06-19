@@ -33,7 +33,7 @@ export async function fetchUsers(user, password) {
 
 //====================== REGISTRO ========================================
 
-export async function fetchRegisterUsers(user, password, name, birthDate, phone, address, city, state, zip_code, cpf) {
+export async function fetchRegisterUsers(user, password, name, birthDate, phone, address,complement ,number ,region , city, state, zip_code, cpf) {
   try {
     // 2. Mudamos para a rota típica de login e configuramos o método POST
     const response = await fetch(`/api/register`, { // Ajuste a rota final de acordo com seu back
@@ -49,6 +49,9 @@ export async function fetchRegisterUsers(user, password, name, birthDate, phone,
         birthDate: birthDate,
         phone: phone,
         address: address,
+        complement: complement ,
+        number: number ,
+        region: region, 
         city: city,
         state: state,
         zip_code: zip_code,

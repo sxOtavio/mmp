@@ -3,10 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '@/hooks/useUser';
 import { pedidosSimulados, filtrarPedidos, contarPedidosPorStatus } from './pedidosSimulados';
+import { useOrders } from '@/hooks/useDelivery';
 
-export default function EntregadorPage() {
+export default function deliveryPage() {
   const { auth } = useUser();
-  const [pedidos, setPedidos] = useState(pedidosSimulados);
+
+  const {
+  orders: pedidos,
+  loading,
+} = useOrders();
+
   const [filtro, setFiltro] = useState('todos');
   const [mostrarNotificacao, setMostrarNotificacao] = useState(false);
   const [mensagemNotificacao, setMensagemNotificacao] = useState('');
@@ -14,15 +20,6 @@ export default function EntregadorPage() {
   const [modoEscuro, setModoEscuro] = useState(false);
   const [ordem, setOrdem] = useState('recente'); // recente, antigo, maior, menor
 
-  useEffect(() => {
-    // Carregar preferência de tema
-    const tema = localStorage.getItem('@tema_entregador');
-    if (tema === 'dark') setModoEscuro(true);
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('@tema_entregador', modoEscuro ? 'dark' : 'light');
-  }, [modoEscuro]);
 
   const getStatusConfig = (status) => {
     const configs = {
@@ -118,14 +115,16 @@ export default function EntregadorPage() {
   const formatarData = (dataISO) => {
     const data = new Date(dataISO);
     const agora = new Date();
-    const diffMinutos = Math.floor((agora - data) / 60000);
+   const diffMinutos = Math.abs(Math.floor((agora - data) / 60000));
     
     if (diffMinutos < 1) return 'Agora mesmo';
     if (diffMinutos < 60) return `${diffMinutos} min atrás`;
     if (diffMinutos < 120) return '1 hora atrás';
     if (diffMinutos < 1440) return `${Math.floor(diffMinutos / 60)} horas atrás`;
     return data.toLocaleDateString();
+
   };
+  
 
   return (
     <div className={`min-h-screen transition-colors ${modoEscuro ? 'bg-gray-900' : 'bg-gray-50'}`}>
@@ -202,12 +201,6 @@ export default function EntregadorPage() {
             </p>
           </div>
           
-          <button
-            onClick={() => setModoEscuro(!modoEscuro)}
-            className={`p-2 rounded-full ${modoEscuro ? 'bg-gray-700 text-yellow-400' : 'bg-gray-200 text-gray-700'}`}
-          >
-            {modoEscuro ? '🌞' : '🌙'}
-          </button>
         </div>
 
         {/* Cards de métricas */}
@@ -304,8 +297,8 @@ export default function EntregadorPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {pedidosFiltrados.map((pedido) => {
-              const statusConfig = getStatusConfig(pedido.status_pedido);
-              const tempoPedido = formatarData(pedido.created_at);
+              const statusConfig = getStatusConfig(pedido.status);
+              const tempoPedido = formatarData(pedido.createdAt);
               
               return (
                 <div
@@ -336,8 +329,8 @@ export default function EntregadorPage() {
                     <div className="flex items-start gap-2">
                       <span className="text-xl">👤</span>
                       <div className="flex-1">
-                        <p className="font-semibold">{pedido.cliente_nome}</p>
-                        <p className="text-sm opacity-75">{pedido.cliente_telefone}</p>
+                        <p className="font-semibold">{pedido.cliente.nome}</p>
+                        <p className="text-sm opacity-75">{pedido.cliente.telefone}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs opacity-60">{tempoPedido}</p>
@@ -346,7 +339,7 @@ export default function EntregadorPage() {
 
                     <div className="flex items-start gap-2">
                       <span className="text-xl">📍</span>
-                      <p className="text-sm flex-1">{pedido.cliente_endereco}</p>
+                      <p className="text-sm flex-1">{` ${pedido.cliente.cidade}, ${pedido.cliente.bairro}, ${pedido.cliente.endereco}, ${pedido.cliente.numero}`}</p>
                     </div>
 
                     <div className="flex items-start gap-2">
