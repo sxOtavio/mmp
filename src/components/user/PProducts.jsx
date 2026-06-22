@@ -136,7 +136,7 @@ export default function Products() {
                 hover:shadow-lg
               "
             >
-              <div className="bg-gray-100 h-40 rounded mb-2 overflow-hidden flex items-center justify-center text-[10px] text-gray-400">
+              <div className="bg-gray-100 h-40 rounded mb-2 overflow-hidden flex items-center justify-center text-[10px] text-black">
                 {p.image_url ? (
                   <img
                     src={p.image_url}
@@ -150,7 +150,7 @@ export default function Products() {
               </div>
 
               <h3
-                className="text-xs font-semibold text-gray-800 truncate mb-1"
+                className="text-xs font-semibold text-black truncate mb-1"
                 title={p.name}
               >
                 {p.name}

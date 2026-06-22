@@ -5,7 +5,7 @@ export function middleware(request) {
   const token = request.headers.get('authorization')?.split(' ')[1];
   
   // Rotas que não precisam de autenticação
-  const publicPaths = ['/api/login','/api/register','/api/products','/api/promo','/','/userPage','/checkoutPage'];
+  const publicPaths = ['/api/login','/api/register','/api/products','/','/api/promo','/','/userPage','/checkoutPage'];
   const isPublicPath = publicPaths.some(path => request.nextUrl.pathname.startsWith(path));
   
   if (isPublicPath) {

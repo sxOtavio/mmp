@@ -131,7 +131,7 @@ export default function deliveryPage() {
       {/* Notificação Toast */}
       {mostrarNotificacao && (
         <div className="fixed top-4 right-4 z-50 animate-slide-in">
-          <div className="bg-emerald-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+          <div className="bg-emerald-500 text-black px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
             <span className="text-xl">🎉</span>
             <span>{mensagemNotificacao}</span>
           </div>
@@ -148,7 +148,7 @@ export default function deliveryPage() {
             </div>
             <div className="p-6 space-y-6">
               {/* Cliente */}
-              <div className={`p-4 rounded-lg ${modoEscuro ? 'bg-gray-700' : 'bg-gray-50'}`}>
+              <div className={`p-4 rounded-lg text-black ${modoEscuro ? 'bg-gray-700' : 'bg-gray-50'}`}>
                 <h3 className="font-semibold mb-2 text-lg">👤 Cliente</h3>
                 <p><strong>Nome:</strong> {pedidoSelecionado.cliente_nome}</p>
                 <p><strong>Telefone:</strong> {pedidoSelecionado.cliente_telefone}</p>

@@ -100,7 +100,7 @@ export function CartDrawer() {
                   return (
                     <div key={item.gtin || idx} className="border-b pb-4">
                       <h4 className="font-medium mb-1">{item.nome}</h4>
-                      <div className="text-sm text-gray-500 mb-2">
+                      <div className="text-sm text-black mb-2">
                         R$ {Number(preco).toFixed(2)} x {item.quantity}
                       </div>
                       <div className="font-bold text-gray-800 mb-2">
