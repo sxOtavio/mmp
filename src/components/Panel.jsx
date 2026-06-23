@@ -99,14 +99,14 @@ export default function Panel() {
           <div className="bg-gray-100 p-4 border-b border-gray-300">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Categoria</label>
+                <label className="block text-sm font-semibold text-black mb-1">Categoria</label>
                 <select
                   value={filterCategory}
                   onChange={(e) => {
                     setFilterCategory(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Todas as categorias</option>
                   {categoriesList.map((cat) => (
@@ -127,7 +127,7 @@ export default function Panel() {
                     setCurrentPage(1);
                   }}
                   placeholder="Buscar por nome..."
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -182,24 +182,24 @@ export default function Panel() {
             >
               <input type="checkbox" />
 
-              <p className="text-sm truncate">{p.gtin_code}</p>
+              <p className="text-sm text-black truncate">{p.gtin_code}</p>
 
-              <p className="text-sm font-medium truncate">
+              <p className="text-sm text-black font-medium truncate">
                 {p.name}
               </p>
 
-              <p className="text-sm truncate">{p.brand}</p>
+              <p className="text-sm text-black truncate">{p.brand}</p>
 
-              <p className="font-semibold text-sm">
+              <p className="font-semibold text-black text-sm">
                 R$ {Number(p.price).toFixed(2)}
               </p>
 
-              <p className="text-red-600 font-semibold text-sm">
+              <p className="text-red-600 text-black font-semibold text-sm">
                 {p.promotion_price ? `R$ ${Number(p.promotion_price).toFixed(2)}` : "-"}
               </p>
 
               <p
-                className={`text-sm font-bold ${
+                className={`text-sm font-bold  ${
                   p.active
                     ? "text-green-600"
                     : "text-red-500"
@@ -220,7 +220,7 @@ export default function Panel() {
                 )}
               </div>
 
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs text-black text-black truncate">
                 {p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "-"}
               </p>
 
@@ -274,7 +274,7 @@ export default function Panel() {
             onClick={() =>
               setCurrentPage((prev) => prev - 1)
             }
-            className="bg-yellow-400 hover:bg-yellow-500 px-5 py-2 rounded-lg font-bold disabled:opacity-50"
+            className="bg-yellow-400 text-black hover:bg-yellow-500 px-5 py-2 rounded-lg font-bold disabled:opacity-50"
           >
             Anterior
           </button>
@@ -288,7 +288,7 @@ export default function Panel() {
             onClick={() =>
               setCurrentPage((prev) => prev + 1)
             }
-            className="bg-yellow-400 hover:bg-yellow-500 px-5 py-2 rounded-lg font-bold disabled:opacity-50"
+            className="bg-yellow-400 text-black hover:bg-yellow-500 px-5 py-2 rounded-lg font-bold disabled:opacity-50"
           >
             Próxima
           </button>

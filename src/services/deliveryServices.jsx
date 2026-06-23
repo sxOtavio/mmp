@@ -58,23 +58,24 @@ export async function fetchOrdersByStatus(status) {
 // Atualizar status do pedido
 export async function updateOrderStatus(orderId, status) {
   try {
+    console.log(`🔄 Atualizando pedido ${orderId} para status: ${status}`);
+    
     const response = await fetch(`/api/orders/${orderId}/status`, {
       method: 'PATCH',
       headers: getHeaders(),
-      body: JSON.stringify({
-        status: status,
-        atualizado_em: new Date().toISOString()
-      }),
+      body: JSON.stringify({ status }), 
     });
 
     if (!response.ok) {
-      throw new Error("Erro ao atualizar status do pedido");
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Erro ao atualizar status");
     }
+    
     const data = await response.json();
-    console.log(`Status do pedido ${orderId} atualizado para ${status}:`, data);
+    console.log(`Status do pedido ${orderId} atualizado:`, data);
     return data;
   } catch (error) {
-    console.error("Erro em updateOrderStatus:", error);
+    console.error(" Erro em updateOrderStatus:", error);
     throw error;
   }
 }

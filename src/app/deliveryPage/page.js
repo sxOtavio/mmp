@@ -2,7 +2,77 @@
 
 import { useState } from 'react';
 import { useDelivery } from '@/hooks/useDelivery';
-import { filtrarPedidos, contarPedidosPorStatus } from './pedidosSimulados';
+
+// ✅ Mapeamento de status (inglês → português)
+const STATUS_MAP = {
+  pending: 'Aguardando',
+  preparing: 'Separando',
+  out_for_delivery: 'Em Rota',
+  delivered: 'Entregue',
+  cancelled: 'Cancelado'
+};
+
+// ✅ Configuração dos status
+const getStatusConfig = (status) => {
+  const configs = {
+    pending: {
+      label: 'Aguardando',
+      icon: '⏰',
+      cor: 'amber',
+      bg: 'bg-amber-50',
+      text: 'text-black',
+      border: 'border-amber-200',
+      acao: 'Iniciar Separação',
+      proxStatus: 'preparing',
+      descricao: 'Pedido aguardando separação'
+    },
+    preparing: {
+      label: 'Separando',
+      icon: '📦',
+      cor: 'blue',
+      bg: 'bg-blue-50',
+      text: 'text-black',
+      border: 'border-blue-200',
+      acao: 'Sair para Entrega',
+      proxStatus: 'out_for_delivery',
+      descricao: 'Produtos sendo separados'
+    },
+    out_for_delivery: {
+      label: 'Em Rota',
+      icon: '🛵',
+      cor: 'purple',
+      bg: 'bg-purple-50',
+      text: 'text-black',
+      border: 'border-purple-200',
+      acao: 'Finalizar Entrega',
+      proxStatus: 'delivered',
+      descricao: 'Entregador a caminho'
+    },
+    delivered: {
+      label: 'Entregue',
+      icon: '✅',
+      cor: 'emerald',
+      bg: 'bg-emerald-50',
+      text: 'text-black',
+      border: 'border-emerald-200',
+      acao: null,
+      proxStatus: null,
+      descricao: 'Pedido finalizado'
+    },
+    cancelled: {
+      label: 'Cancelado',
+      icon: '❌',
+      cor: 'red',
+      bg: 'bg-red-50',
+      text: 'text-black',
+      border: 'border-red-200',
+      acao: null,
+      proxStatus: null,
+      descricao: 'Pedido cancelado'
+    }
+  };
+  return configs[status] || configs.pending;
+};
 
 export default function DeliveryPage() {
   const {
@@ -19,54 +89,38 @@ export default function DeliveryPage() {
   const [pedidoSelecionado, setPedidoSelecionado] = useState(null);
   const [ordem, setOrdem] = useState('recente');
 
-  const getStatusConfig = (status) => {
-    const configs = {
-      pago: {
-        label: 'Aguardando',
-        icon: '⏰',
-        cor: 'amber',
-        bg: 'bg-amber-50',
-        text: 'text-black',
-        border: 'border-amber-200',
-        acao: 'Iniciar Separação',
-        proxStatus: 'preparando',
-        descricao: 'Pedido aguardando separação'
-      },
-      preparando: {
-        label: 'Separando',
-        icon: '📦',
-        cor: 'blue',
-        bg: 'bg-blue-50',
-        text: 'text-black',
-        border: 'border-blue-200',
-        acao: 'Sair para Entrega',
-        proxStatus: 'saiu_para_entrega',
-        descricao: 'Produtos sendo separados'
-      },
-      saiu_para_entrega: {
-        label: 'Em Rota',
-        icon: '🛵',
-        cor: 'purple',
-        bg: 'bg-purple-50',
-        text: 'text-black',
-        border: 'border-purple-200',
-        acao: 'Finalizar Entrega',
-        proxStatus: 'entregue',
-        descricao: 'Entregador a caminho'
-      },
-      entregue: {
-        label: 'Entregue',
-        icon: '✅',
-        cor: 'emerald',
-        bg: 'bg-emerald-50',
-        text: 'text-black',
-        border: 'border-emerald-200',
-        acao: null,
-        proxStatus: null,
-        descricao: 'Pedido finalizado'
-      }
+  // ✅ Função para contar pedidos por status (usando status em inglês)
+  const contarPorStatus = (pedidosList) => {
+    const contagem = {
+      total: pedidosList.length,
+      pending: 0,
+      preparing: 0,
+      out_for_delivery: 0,
+      delivered: 0,
+      cancelled: 0
     };
-    return configs[status] || configs.pago;
+
+    pedidosList.forEach(pedido => {
+      const status = pedido.status_pedido || pedido.status;
+      if (contagem.hasOwnProperty(status)) {
+        contagem[status]++;
+      }
+    });
+
+    return contagem;
+  };
+
+  const contagens = contarPorStatus(pedidos);
+
+  // ✅ Função para filtrar pedidos por status
+  const filtrarPedidos = (pedidosList, filtro) => {
+    if (filtro === 'todos') {
+      return pedidosList;
+    }
+    return pedidosList.filter(pedido => {
+      const status = pedido.status_pedido || pedido.status;
+      return status === filtro;
+    });
   };
 
   const atualizarStatus = async (pedidoId, novoStatus) => {
@@ -74,9 +128,9 @@ export default function DeliveryPage() {
     
     if (result) {
       const mensagens = {
-        preparando: '📦 Pedido encaminhado para separação',
-        saiu_para_entrega: '🛵 Pedido saiu para entrega',
-        entregue: '✅ Pedido entregue com sucesso!'
+        preparing: '📦 Pedido encaminhado para separação',
+        out_for_delivery: '🛵 Pedido saiu para entrega',
+        delivered: '✅ Pedido entregue com sucesso!'
       };
       
       setMensagemNotificacao(mensagens[novoStatus] || '✅ Status atualizado!');
@@ -90,7 +144,6 @@ export default function DeliveryPage() {
     }
   };
 
-  // Função para abrir detalhes - usa os dados que já temos
   const abrirDetalhes = (pedido) => {
     setPedidoSelecionado(pedido);
   };
@@ -112,11 +165,6 @@ export default function DeliveryPage() {
   };
 
   const pedidosFiltrados = ordenarPedidos(filtrarPedidos(pedidos, filtro));
-  const contagens = filtrarPedidos(pedidos, 'todos').reduce((acc, pedido) => {
-    const status = pedido.status_pedido || pedido.status;
-    acc[status] = (acc[status] || 0) + 1;
-    return acc;
-  }, {});
 
   const formatarData = (dataISO) => {
     if (!dataISO) return 'Data não disponível';
@@ -183,7 +231,7 @@ export default function DeliveryPage() {
         </div>
       )}
 
-      {/* Modal de Detalhes - Usando os dados que já temos */}
+      {/* Modal de Detalhes */}
       {pedidoSelecionado && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -199,12 +247,6 @@ export default function DeliveryPage() {
                 <p className="text-black"><strong className="text-black">Telefone:</strong> {pedidoSelecionado.cliente_telefone || pedidoSelecionado.cliente?.telefone || 'Não informado'}</p>
                 <p className="text-black"><strong className="text-black">Endereço:</strong> {pedidoSelecionado.cliente_endereco || pedidoSelecionado.cliente?.endereco || 'Não informado'}</p>
                 <p className="text-black"><strong className="text-black">Cidade:</strong> {pedidoSelecionado.cliente_cidade || pedidoSelecionado.cliente?.cidade || 'Não informado'}</p>
-                {pedidoSelecionado.cliente_numero && (
-                  <p className="text-black"><strong className="text-black">Número:</strong> {pedidoSelecionado.cliente_numero}</p>
-                )}
-                {pedidoSelecionado.cliente_bairro && (
-                  <p className="text-black"><strong className="text-black">Bairro:</strong> {pedidoSelecionado.cliente_bairro}</p>
-                )}
               </div>
 
               {/* Itens */}
@@ -237,9 +279,6 @@ export default function DeliveryPage() {
                 <p className="text-black"><strong className="text-black">Data do pedido:</strong> {pedidoSelecionado.created_at ? new Date(pedidoSelecionado.created_at).toLocaleString() : 'Não disponível'}</p>
                 <p className="text-black"><strong className="text-black">Status:</strong> {getStatusConfig(pedidoSelecionado.status_pedido || pedidoSelecionado.status).label}</p>
                 <p className="text-black"><strong className="text-black">Qtd. itens:</strong> {pedidoSelecionado.itens?.length || 0}</p>
-                {pedidoSelecionado.observacoes && (
-                  <p className="text-black"><strong className="text-black">Observações:</strong> {pedidoSelecionado.observacoes}</p>
-                )}
               </div>
             </div>
           </div>
@@ -273,50 +312,25 @@ export default function DeliveryPage() {
           </div>
         </div>
 
-        {/* Cards de métricas */}
+        {/* Cards de métricas - USANDO OS STATUS EM INGLÊS */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <MetricCard
-            icon="📊"
-            label="Total"
-            value={pedidos.length}
-            cor="gray"
-          />
-          <MetricCard
-            icon="⏰"
-            label="Aguardando"
-            value={contagens.pago || 0}
-            cor="amber"
-          />
-          <MetricCard
-            icon="📦"
-            label="Separando"
-            value={contagens.preparando || 0}
-            cor="blue"
-          />
-          <MetricCard
-            icon="🛵"
-            label="Em Rota"
-            value={contagens.saiu_para_entrega || 0}
-            cor="purple"
-          />
-          <MetricCard
-            icon="✅"
-            label="Entregues"
-            value={contagens.entregue || 0}
-            cor="emerald"
-          />
+          <MetricCard icon="📊" label="Total" value={pedidos.length} cor="gray" />
+          <MetricCard icon="⏰" label="Aguardando" value={contagens.pending || 0} cor="amber" />
+          <MetricCard icon="📦" label="Separando" value={contagens.preparing || 0} cor="blue" />
+          <MetricCard icon="🛵" label="Em Rota" value={contagens.out_for_delivery || 0} cor="purple" />
+          <MetricCard icon="✅" label="Entregues" value={contagens.delivered || 0} cor="emerald" />
         </div>
 
-        {/* Barra de filtros e ordenação */}
+        {/* Barra de filtros e ordenação - FILTROS EM INGLÊS */}
         <div className="rounded-xl shadow-sm p-4 mb-6 bg-white">
           <div className="flex flex-col md:flex-row gap-4 justify-between">
             <div className="flex gap-2 flex-wrap">
               {[
                 { id: 'todos', label: 'Todos', icon: '📋' },
-                { id: 'pago', label: 'Aguardando', icon: '⏰' },
-                { id: 'preparando', label: 'Separando', icon: '📦' },
-                { id: 'saiu_para_entrega', label: 'Em Rota', icon: '🛵' },
-                { id: 'entregue', label: 'Entregues', icon: '✅' }
+                { id: 'pending', label: 'Aguardando', icon: '⏰' },
+                { id: 'preparing', label: 'Separando', icon: '📦' },
+                { id: 'out_for_delivery', label: 'Em Rota', icon: '🛵' },
+                { id: 'delivered', label: 'Entregues', icon: '✅' }
               ].map((f) => (
                 <button
                   key={f.id}
@@ -344,10 +358,10 @@ export default function DeliveryPage() {
               onChange={(e) => setOrdem(e.target.value)}
               className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-black"
             >
-              <option value="recente" className="text-black">📅 Mais recentes</option>
-              <option value="antigo" className="text-black">📅 Mais antigos</option>
-              <option value="maior" className="text-black">💰 Maior valor</option>
-              <option value="menor" className="text-black">💰 Menor valor</option>
+              <option value="recente">📅 Mais recentes</option>
+              <option value="antigo">📅 Mais antigos</option>
+              <option value="maior">💰 Maior valor</option>
+              <option value="menor">💰 Menor valor</option>
             </select>
           </div>
         </div>
@@ -362,7 +376,7 @@ export default function DeliveryPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {pedidosFiltrados.map((pedido) => {
-              const statusPedido = pedido.status_pedido || pedido.status || 'pago';
+              const statusPedido = pedido.status_pedido || pedido.status || 'pending';
               const statusConfig = getStatusConfig(statusPedido);
               const tempoPedido = formatarData(pedido.created_at || pedido.createdAt);
 
@@ -466,7 +480,8 @@ export default function DeliveryPage() {
         )}
       </div>
 
-      <style jsx>{`
+      {/* Animações com Tailwind */}
+      <style>{`
         @keyframes slide-in {
           from {
             transform: translateX(100%);
@@ -492,7 +507,8 @@ function MetricCard({ icon, label, value, cor }) {
     amber: 'from-amber-50 to-amber-100',
     blue: 'from-blue-50 to-blue-100',
     purple: 'from-purple-50 to-purple-100',
-    emerald: 'from-emerald-50 to-emerald-100'
+    emerald: 'from-emerald-50 to-emerald-100',
+    red: 'from-red-50 to-red-100'
   };
 
   const textos = {
@@ -500,7 +516,8 @@ function MetricCard({ icon, label, value, cor }) {
     amber: 'text-black',
     blue: 'text-black',
     purple: 'text-black',
-    emerald: 'text-black'
+    emerald: 'text-black',
+    red: 'text-black'
   };
 
   return (

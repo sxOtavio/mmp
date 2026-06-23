@@ -6,9 +6,8 @@ import Footer from "@/components/Footer";
 export default function registerPage() {
   return (
     <main>
-      <Header />
       <Register />
-      <Footer />
+
     </main>
   );
 }

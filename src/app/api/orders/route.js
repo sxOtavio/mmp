@@ -33,8 +33,6 @@ export async function GET() {
       INNER JOIN order_items oi
         ON oi.order_id = o.id
 
-      WHERE o.status = 'pending'
-
       ORDER BY o.created_at ASC
     `);
 
