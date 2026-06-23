@@ -163,7 +163,7 @@ export default function Products() {
               </div>
 
               {/* Nome do produto - com limite de linhas */}
-              <h3 className="font-bold text-sm line-clamp-2 min-h-[40px]">
+              <h3 className="font-bold text-sm text-black line-clamp-2 min-h-[40px]">
                 {p.name}
               </h3>
 
