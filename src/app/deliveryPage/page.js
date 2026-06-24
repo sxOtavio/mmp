@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useDelivery } from '@/hooks/useDelivery';
 
-// ✅ Mapeamento de status (inglês → português)
+//  Mapeamento de status 
 const STATUS_MAP = {
   pending: 'Aguardando',
   preparing: 'Separando',
@@ -12,7 +12,7 @@ const STATUS_MAP = {
   cancelled: 'Cancelado'
 };
 
-// ✅ Configuração dos status
+// Configuração dos status
 const getStatusConfig = (status) => {
   const configs = {
     pending: {
@@ -89,7 +89,7 @@ export default function DeliveryPage() {
   const [pedidoSelecionado, setPedidoSelecionado] = useState(null);
   const [ordem, setOrdem] = useState('recente');
 
-  // ✅ Função para contar pedidos por status (usando status em inglês)
+
   const contarPorStatus = (pedidosList) => {
     const contagem = {
       total: pedidosList.length,
@@ -112,7 +112,7 @@ export default function DeliveryPage() {
 
   const contagens = contarPorStatus(pedidos);
 
-  // ✅ Função para filtrar pedidos por status
+ 
   const filtrarPedidos = (pedidosList, filtro) => {
     if (filtro === 'todos') {
       return pedidosList;
@@ -128,17 +128,17 @@ export default function DeliveryPage() {
     
     if (result) {
       const mensagens = {
-        preparing: '📦 Pedido encaminhado para separação',
-        out_for_delivery: '🛵 Pedido saiu para entrega',
-        delivered: '✅ Pedido entregue com sucesso!'
+        preparing: 'Pedido encaminhado para separação',
+        out_for_delivery: ' Pedido saiu para entrega',
+        delivered: 'Pedido entregue com sucesso!'
       };
       
-      setMensagemNotificacao(mensagens[novoStatus] || '✅ Status atualizado!');
+      setMensagemNotificacao(mensagens[novoStatus] || ' Status atualizado!');
       setMostrarNotificacao(true);
       setTimeout(() => setMostrarNotificacao(false), 3000);
       setPedidoSelecionado(null);
     } else {
-      setMensagemNotificacao('❌ Erro ao atualizar status');
+      setMensagemNotificacao(' Erro ao atualizar status');
       setMostrarNotificacao(true);
       setTimeout(() => setMostrarNotificacao(false), 3000);
     }
@@ -196,7 +196,7 @@ export default function DeliveryPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center bg-white p-8 rounded-xl shadow-lg max-w-md">
-          <div className="text-6xl mb-4">❌</div>
+          <div className="text-6xl mb-4"></div>
           <h2 className="text-black text-xl font-bold mb-2">Erro ao carregar</h2>
           <p className="text-black">{error}</p>
           <button 
@@ -216,7 +216,6 @@ export default function DeliveryPage() {
       {mostrarNotificacao && (
         <div className="fixed top-4 right-4 z-50 animate-slide-in">
           <div className="bg-emerald-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
-            <span className="text-xl">🎉</span>
             <span className="text-white font-medium">{mensagemNotificacao}</span>
           </div>
         </div>
@@ -275,7 +274,7 @@ export default function DeliveryPage() {
 
               {/* Informações adicionais */}
               <div className="p-4 rounded-lg bg-gray-50">
-                <h3 className="font-semibold mb-2 text-black">📋 Informações</h3>
+                <h3 className="font-semibold mb-2 text-black"> Informações</h3>
                 <p className="text-black"><strong className="text-black">Data do pedido:</strong> {pedidoSelecionado.created_at ? new Date(pedidoSelecionado.created_at).toLocaleString() : 'Não disponível'}</p>
                 <p className="text-black"><strong className="text-black">Status:</strong> {getStatusConfig(pedidoSelecionado.status_pedido || pedidoSelecionado.status).label}</p>
                 <p className="text-black"><strong className="text-black">Qtd. itens:</strong> {pedidoSelecionado.itens?.length || 0}</p>
@@ -407,7 +406,6 @@ export default function DeliveryPage() {
                   {/* Body */}
                   <div className="p-4 space-y-3">
                     <div className="flex items-start gap-2">
-                      <span className="text-xl">👤</span>
                       <div className="flex-1">
                         <p className="font-semibold text-black">{pedido.cliente_nome || pedido.cliente?.nome || 'Cliente não informado'}</p>
                         <p className="text-sm text-black opacity-75">{pedido.cliente_telefone || pedido.cliente?.telefone || ''}</p>
@@ -418,14 +416,12 @@ export default function DeliveryPage() {
                     </div>
 
                     <div className="flex items-start gap-2">
-                      <span className="text-xl">📍</span>
                       <p className="text-sm text-black flex-1">
                         {pedido.cliente_cidade || pedido.cliente?.cidade || ''} {pedido.cliente_bairro || pedido.cliente?.bairro || ''} {pedido.cliente_endereco || pedido.cliente?.endereco || ''} {pedido.cliente_numero || pedido.cliente?.numero || ''}
                       </p>
                     </div>
 
                     <div className="flex items-start gap-2">
-                      <span className="text-xl">🛒</span>
                       <div className="flex-1">
                         <div className="space-y-1">
                           {pedido.itens && pedido.itens.length > 0 ? (

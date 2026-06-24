@@ -260,7 +260,7 @@ export function useUser() {
 
   // ============ LOGOUT ============
   const logout = useCallback(() => {
-    console.log("🚪 Fazendo logout...");
+    console.log(" Fazendo logout...");
     localStorage.removeItem('@token');
     localStorage.removeItem('@user');
     setAuth({
@@ -314,12 +314,12 @@ export function useUser() {
     const token = auth.token || localStorage.getItem('@token');
     
     if (!token) {
-      console.log("❌ validateToken: Nenhum token encontrado");
+      console.log(" validateToken: Nenhum token encontrado");
       return { valid: false, error: "Token não encontrado" };
     }
     
     if (isTokenExpired(token)) {
-      console.log("❌ validateToken: Token expirado localmente");
+      console.log("validateToken: Token expirado localmente");
       await logout();
       return { valid: false, error: "Token expirado" };
     }
@@ -328,7 +328,7 @@ export function useUser() {
       const result = await verifyToken(token);
       
       if (result.valid) {
-        console.log("✅ validateToken: Token válido");
+        console.log(" validateToken: Token válido");
         const tokenInfo = decodeToken(token);
 
         console.log("TOKEN RECUPERADO", token);
@@ -342,12 +342,12 @@ export function useUser() {
         
         return { valid: true, decoded: result.decoded };
       } else {
-        console.log("❌ validateToken: Token inválido no backend");
+        console.log("validateToken: Token inválido no backend");
         await logout();
         return { valid: false, error: result.error };
       }
     } catch (error) {
-      console.error("❌ validateToken: Erro na verificação", error);
+      console.error(" validateToken: Erro na verificação", error);
       return { valid: false, error: error.message };
     }
   }, [auth.token, logout]);
@@ -356,12 +356,12 @@ export function useUser() {
     const result = await validateToken();
     
     if (!result.valid) {
-      console.log("🔒 checkTokenAndRedirect: Token inválido, redirecionando");
+      console.log(" checkTokenAndRedirect: Token inválido, redirecionando");
       router.push(redirectTo);
       return false;
     }
     
-    console.log("✅ checkTokenAndRedirect: Token válido");
+    console.log(" checkTokenAndRedirect: Token válido");
     return true;
   }, [validateToken, router]);
 
@@ -391,7 +391,7 @@ export function useUser() {
           token: result.token,
           tokenInfo: decodeToken(result.token),
         }));
-        console.log("✅ autoRefreshToken: Token renovado com sucesso");
+        console.log(" autoRefreshToken: Token renovado com sucesso");
         return true;
       }
       
@@ -423,20 +423,79 @@ export function useUser() {
   }, [auth.token, setupTokenValidation]);
 
   //================ para obter dados dos usuarios no checkout ===============
-  const loadCurrentUser = async () => {
-  try {
-    const user = await getCurrentUser(auth.token);
-
-    setAuth(prev => ({
-      ...prev,
-      currentUser: user,
-    }));
-
-    return user;
-  } catch (error) {
-    console.error(error);
+const loadCurrentUser = useCallback(async () => {
+  // Busca o token mais recente (não confia no estado)
+  const token = localStorage.getItem('@token');
+  
+  if (!token) {
+    console.warn('⚠️ Nenhum token encontrado');
+    return null;
   }
-};
+
+  // Verifica se o token NÃO é do usuário atual
+  const tokenInfo = decodeToken(token);
+  const savedUser = localStorage.getItem('@user');
+  
+  if (savedUser) {
+    const parsedUser = JSON.parse(savedUser);
+    
+    // Se o token não corresponder ao usuário salvo, limpa tudo
+    if (tokenInfo?.email !== parsedUser?.email) {
+      console.warn('⚠️ Inconsistência: Token e usuário não correspondem');
+      localStorage.removeItem('@token');
+      localStorage.removeItem('@user');
+      setAuth(prev => ({
+        ...prev,
+        token: null,
+        loginData: null,
+        userRole: null,
+        currentUser: null,
+      }));
+      return null;
+    }
+  }
+
+  try {
+    //  Busca dados FRESCOS do backend
+    const user = await getCurrentUser(token);
+    
+    if (user) {
+      // Atualiza localStorage com dados frescos
+      localStorage.setItem('@user', JSON.stringify(user));
+      
+      //  Atualiza estado
+      setAuth(prev => ({
+        ...prev,
+        loginData: user,
+        currentUser: user,
+        userRole: user?.role || prev.userRole,
+        tokenInfo: tokenInfo,
+        token: token,
+      }));
+      
+      console.log(' loadCurrentUser: Usuário carregado com sucesso:', user.email);
+      return user;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(' Erro ao carregar usuário atual:', error);
+    
+    // Se der erro, token pode ser inválido
+    if (error.response?.status === 401) {
+      localStorage.removeItem('@token');
+      localStorage.removeItem('@user');
+      setAuth(prev => ({
+        ...prev,
+        token: null,
+        loginData: null,
+        currentUser: null,
+      }));
+    }
+    
+    return null;
+  }
+}, []);
 
   return {
     //====== AUTH/USUÁRIO ============

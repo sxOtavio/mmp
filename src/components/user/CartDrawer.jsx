@@ -73,7 +73,7 @@ export function CartDrawer() {
           <h2 className="text-xl font-bold">Meu Carrinho ({totalItens})</h2>
           <button 
             onClick={() => setIsOpen(false)}
-            className="text-2xl text-gray-500 hover:text-gray-800"
+            className="text-2xl text-black hover:text-gray-800"
           >
             ✕
           </button>
@@ -99,7 +99,7 @@ export function CartDrawer() {
                   const subtotal = Number(preco) * item.quantity;
                   return (
                     <div key={item.gtin || idx} className="border-b pb-4">
-                      <h4 className="font-medium mb-1">{item.nome}</h4>
+                      <h4 className="font-medium text-black mb-1">{item.nome}</h4>
                       <div className="text-sm text-black mb-2">
                         R$ {Number(preco).toFixed(2)} x {item.quantity}
                       </div>

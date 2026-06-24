@@ -135,7 +135,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                 {step > 1 ? "✓" : "1"}
               </div>
               <span
-                className={`text-xs mt-2 ${step === 1 ? "text-yellow-600 font-medium" : "text-gray-400"}`}
+                className={`text-xs mt-2 ${step === 1 ? "text-yellow-600 font-medium" : "text-black"}`}
               >
                 Endereço
               </span>
@@ -150,7 +150,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                 2
               </div>
               <span
-                className={`text-xs mt-2 ${step === 2 ? "text-yellow-600 font-medium" : "text-gray-400"}`}
+                className={`text-xs mt-2 ${step === 2 ? "text-yellow-600 font-medium" : "text-black"}`}
               >
                 Pagamento
               </span>
@@ -179,7 +179,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                 <form onSubmit={handleNextStep} className="p-6 space-y-6">
                   <div className="grid md:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-black mb-2">
                         Nome completo *
                       </label>
                       <input
@@ -192,7 +192,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-black mb-2">
                         E-mail *
                       </label>
                       <input
@@ -205,7 +205,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-black mb-2">
                         Telefone *
                       </label>
                       <input
@@ -218,7 +218,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-black mb-2">
                         CEP *
                       </label>
                       <input
@@ -231,7 +231,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-black mb-2">
                         Endereço *
                       </label>
                       <input
@@ -244,7 +244,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-black mb-2">
                         Número *
                       </label>
                       <input
@@ -257,7 +257,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-black mb-2">
                         Complemento
                       </label>
                       <input
@@ -269,7 +269,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-black mb-2">
                         Bairro *
                       </label>
                       <input
@@ -282,7 +282,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-black mb-2">
                         Cidade *
                       </label>
                       <input
@@ -351,7 +351,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                   </div>
 
                   {formData.pagamento === "dinheiro" && (
-                    <div className="bg-yellow-50 rounded-xl p-5 space-y-4">
+                    <div className="bg-yellow-50 text-black rounded-xl p-5 space-y-4">
                       <input
                         type="number"
                         placeholder="Troco para quanto?"

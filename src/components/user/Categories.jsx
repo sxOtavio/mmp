@@ -43,7 +43,7 @@ export default function Categorias({ selectedCategory = "Todos", onCategoryChang
     <section className="px-6 py-10 bg-gray-50">
       <h2 className="text-2xl font-bold mb-6 text-gray-800">Categorias</h2>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-12 gap-4">
         {categories.map(({ label, emoji }) => {
           const isSelected = selectedCategory === label;
           return (

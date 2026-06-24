@@ -61,7 +61,7 @@ export function useDelivery() {
   // Buscar todos os pedidos
   const loadOrders = useCallback(async () => {
     if (isUpdating.current) {
-      console.log("⏳ Já está carregando, ignorando...");
+      console.log("Já está carregando, ignorando...");
       return;
     }
     
@@ -71,12 +71,12 @@ export function useDelivery() {
       setError(null);
 
       const data = await fetchOrders();
-      console.log("📦 Pedidos recebidos:", data?.length || 0);
+      console.log(" Pedidos recebidos:", data?.length || 0);
       setOrders(data || []);
       calcularStats(data || []);
 
     } catch (error) {
-      console.error("❌ Erro em loadOrders:", error);
+      console.error("Erro em loadOrders:", error);
       setError(error.message || "Erro ao buscar pedidos");
     } finally {
       setLoading(false);
@@ -87,7 +87,7 @@ export function useDelivery() {
   // Buscar pedidos por status - ADICIONADO
   const loadOrdersByStatus = useCallback(async (status) => {
     if (isUpdating.current) {
-      console.log("⏳ Já está carregando, ignorando...");
+      console.log(" Já está carregando, ignorando...");
       return;
     }
     
@@ -97,12 +97,12 @@ export function useDelivery() {
       setError(null);
 
       const data = await fetchOrdersByStatus(status);
-      console.log(`📦 Pedidos com status ${status}:`, data?.length || 0);
+      console.log(` Pedidos com status ${status}:`, data?.length || 0);
       setOrders(data || []);
       calcularStats(data || []);
 
     } catch (error) {
-      console.error(`❌ Erro em loadOrdersByStatus (${status}):`, error);
+      console.error(` Erro em loadOrdersByStatus (${status}):`, error);
       setError(error.message || "Erro ao buscar pedidos por status");
     } finally {
       setLoading(false);
@@ -123,7 +123,7 @@ export function useDelivery() {
       setError(null);
 
       const data = await updateOrderStatusService(orderId, status);
-      console.log(`✅ Pedido ${orderId} atualizado para ${status}`);
+      console.log(`Pedido ${orderId} atualizado para ${status}`);
 
       const currentOrders = ordersRef.current;
       const updatedOrders = currentOrders.map(order => {
@@ -144,7 +144,7 @@ export function useDelivery() {
       return data;
 
     } catch (error) {
-      console.error("❌ Erro em updateOrderStatus:", error);
+      console.error("Erro em updateOrderStatus:", error);
       setError(error.message || "Erro ao atualizar status");
       return null;
     } finally {
@@ -162,12 +162,12 @@ export function useDelivery() {
       setError(null);
 
       const data = await fetchOrderDetails(orderId);
-      console.log(`📋 Detalhes do pedido ${orderId}:`, data);
+      console.log(` Detalhes do pedido ${orderId}:`, data);
       setCurrentOrder(data);
       return data;
 
     } catch (error) {
-      console.error("❌ Erro em loadOrderDetails:", error);
+      console.error(" Erro em loadOrderDetails:", error);
       setError(error.message || "Erro ao buscar detalhes do pedido");
       return null;
     } finally {
@@ -185,7 +185,7 @@ export function useDelivery() {
       setError(null);
 
       const data = await assignDeliveryPerson(orderId, deliveryPersonId);
-      console.log(`👤 Entregador atribuído ao pedido ${orderId}`);
+      console.log(` Entregador atribuído ao pedido ${orderId}`);
 
       const currentOrders = ordersRef.current;
       const updatedOrders = currentOrders.map(order => 
@@ -199,7 +199,7 @@ export function useDelivery() {
       return data;
 
     } catch (error) {
-      console.error("❌ Erro em assignDeliveryPerson:", error);
+      console.error(" Erro em assignDeliveryPerson:", error);
       setError(error.message || "Erro ao atribuir entregador");
       return null;
     } finally {
@@ -217,11 +217,11 @@ export function useDelivery() {
       setError(null);
 
       const data = await fetchAvailableDeliveryPersons();
-      console.log("🚚 Entregadores disponíveis:", data?.length || 0);
+      console.log("Entregadores disponíveis:", data?.length || 0);
       return data || [];
 
     } catch (error) {
-      console.error("❌ Erro em loadAvailableDeliveryPersons:", error);
+      console.error(" Erro em loadAvailableDeliveryPersons:", error);
       setError(error.message || "Erro ao buscar entregadores");
       return [];
     } finally {
@@ -235,11 +235,11 @@ export function useDelivery() {
       setError(null);
 
       const data = await updateDeliveryLocation(orderId, latitude, longitude);
-      console.log(`📍 Localização do pedido ${orderId} atualizada`);
+      console.log(` Localização do pedido ${orderId} atualizada`);
       return data;
 
     } catch (error) {
-      console.error("❌ Erro em updateLocation:", error);
+      console.error("Erro em updateLocation:", error);
       setError(error.message || "Erro ao atualizar localização");
       return null;
     }
@@ -255,7 +255,7 @@ export function useDelivery() {
       setError(null);
 
       const data = await cancelDelivery(orderId, motivo);
-      console.log(`❌ Pedido ${orderId} cancelado`);
+      console.log(` Pedido ${orderId} cancelado`);
 
       const currentOrders = ordersRef.current;
       const updatedOrders = currentOrders.map(order => 
@@ -270,7 +270,7 @@ export function useDelivery() {
       return data;
 
     } catch (error) {
-      console.error("❌ Erro em cancelDelivery:", error);
+      console.error(" Erro em cancelDelivery:", error);
       setError(error.message || "Erro ao cancelar entrega");
       return null;
     } finally {
@@ -288,11 +288,11 @@ export function useDelivery() {
       setError(null);
 
       const data = await fetchDeliveryStats(deliveryPersonId);
-      console.log(`📊 Estatísticas do entregador:`, data);
+      console.log(` Estatísticas do entregador:`, data);
       return data;
 
     } catch (error) {
-      console.error("❌ Erro em loadDeliveryStats:", error);
+      console.error(" Erro em loadDeliveryStats:", error);
       setError(error.message || "Erro ao buscar estatísticas");
       return null;
     } finally {
@@ -310,13 +310,13 @@ export function useDelivery() {
       setError(null);
 
       const data = await fetchOrdersByDeliveryPerson(deliveryPersonId);
-      console.log(`📦 Meus pedidos:`, data?.length || 0);
+      console.log(`Meus pedidos:`, data?.length || 0);
       setOrders(data || []);
       calcularStats(data || []);
       return data;
 
     } catch (error) {
-      console.error("❌ Erro em loadMyOrders:", error);
+      console.error(" Erro em loadMyOrders:", error);
       setError(error.message || "Erro ao buscar seus pedidos");
     } finally {
       setLoading(false);
@@ -336,7 +336,7 @@ export function useDelivery() {
       setError(null);
 
       const data = await confirmDelivery(orderId, proofData);
-      console.log(`✅ Entrega do pedido ${orderId} confirmada`);
+      console.log(`Entrega do pedido ${orderId} confirmada`);
 
       const currentOrders = ordersRef.current;
       const updatedOrders = currentOrders.map(order => 
@@ -351,7 +351,7 @@ export function useDelivery() {
       return data;
 
     } catch (error) {
-      console.error("❌ Erro em confirmDeliveryWithProof:", error);
+      console.error("Erro em confirmDeliveryWithProof:", error);
       setError(error.message || "Erro ao confirmar entrega");
       return null;
     } finally {
@@ -391,7 +391,7 @@ export function useDelivery() {
 
     // Funções principais
     loadOrders,
-    loadOrdersByStatus, // ✅ AGORA ESTÁ DEFINIDA
+    loadOrdersByStatus, 
     loadOrderDetails,
     loadAvailableDeliveryPersons,
     loadDeliveryStats,
