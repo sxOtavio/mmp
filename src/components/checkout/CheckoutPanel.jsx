@@ -295,10 +295,11 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                       />
                     </div>
 
-                  </div>
+
                     <div className="grid lg:grid-cols-3 ">
                       <input type="checkbox" name="" id="" /><h2>Marque se desejar CPF na nota</h2>
                     </div>
+                 </div>
                   <div className="flex justify-end">
                     <button
                       type="submit"
@@ -405,7 +406,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                 })}
               </div>
               <div className="border-t pt-4">
-                <div className="flex justify-between font-bold text-lg">
+                <div className="flex justify-between text-black font-bold text-lg">
                   <span>Total:</span>
                   <span className="text-red-600">
                     R$ {cartTotal.toFixed(2)}
