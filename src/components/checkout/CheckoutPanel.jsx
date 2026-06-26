@@ -177,7 +177,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                   </button>
                 </div>
                 <form onSubmit={handleNextStep} className="p-6 space-y-6">
-                  <div className="grid md:grid-cols-2 gap-5">
+                  <div className="grid text-black md:grid-cols-2 gap-5">
                     <div>
                       <label className="block text-sm font-medium text-black mb-2">
                         Nome completo *
@@ -188,7 +188,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                         required
                         value={formData.nome}
                         onChange={handleInputChange}
-                        className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-yellow-400"
+                        className="placeholder:text-gray-600 w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-yellow-400"
                       />
                     </div>
                     <div>
@@ -201,7 +201,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                         required
                         value={formData.email}
                         onChange={handleInputChange}
-                        className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-yellow-400"
+                        className="placeholder:text-gray-600 w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-yellow-400"
                       />
                     </div>
                     <div>
@@ -214,7 +214,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                         required
                         value={formData.telefone}
                         onChange={handleInputChange}
-                        className="w-full border-2 border-gray-200 rounded-xl px-4 py-3"
+                        className="placeholder:text-gray-600 w-full border-2 border-gray-200 rounded-xl px-4 py-3"
                       />
                     </div>
                     <div>
@@ -227,7 +227,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                         required
                         value={formData.cep}
                         onChange={handleInputChange}
-                        className="w-full border-2 border-gray-200 rounded-xl px-4 py-3"
+                        className="placeholder:text-gray-600 w-full border-2 border-gray-200 rounded-xl px-4 py-3"
                       />
                     </div>
                     <div className="md:col-span-2">
@@ -240,7 +240,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                         required
                         value={formData.endereco}
                         onChange={handleInputChange}
-                        className="w-full border-2 border-gray-200 rounded-xl px-4 py-3"
+                        className="placeholder:text-gray-600 w-full border-2 border-gray-200 rounded-xl px-4 py-3"
                       />
                     </div>
                     <div>
@@ -253,7 +253,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                         required
                         value={formData.numero}
                         onChange={handleInputChange}
-                        className="w-full border-2 border-gray-200 rounded-xl px-4 py-3"
+                        className="placeholder:text-gray-600 w-full border-2 border-gray-200 rounded-xl px-4 py-3"
                       />
                     </div>
                     <div>
@@ -265,7 +265,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                         name="complemento"
                         value={formData.complemento}
                         onChange={handleInputChange}
-                        className="w-full border-2 border-gray-200 rounded-xl px-4 py-3"
+                        className="placeholder:text-black w-full border-2 border-gray-200 rounded-xl px-4 py-3"
                       />
                     </div>
                     <div>
@@ -278,7 +278,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                         required
                         value={formData.bairro}
                         onChange={handleInputChange}
-                        className="w-full border-2 border-gray-200 rounded-xl px-4 py-3"
+                        className="placeholder:text-gray-600 text-black w-full border-2 border-gray-200 rounded-xl px-4 py-3"
                       />
                     </div>
                     <div>
@@ -291,7 +291,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                         required
                         value={formData.cidade}
                         onChange={handleInputChange}
-                        className="w-full border-2 border-gray-200 rounded-xl px-4 py-3"
+                        className="placeholder:text-gray-600 w-full border-2 border-gray-200 rounded-xl px-4 py-3"
                       />
                     </div>
 
@@ -387,7 +387,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
               <h2 className="text-xl font-bold text-red-600 mb-4">
                 🛒 Seu Pedido
               </h2>
-              <div className="space-y-3 max-h-96 overflow-y-auto mb-4">
+              <div className="space-y-3 text-black max-h-96 overflow-y-auto mb-4">
                 {cart.map((item, idx) => {
                   const preco = item.precoPromocional || item.precoNormal;
                   const subtotal = Number(preco) * item.quantity;

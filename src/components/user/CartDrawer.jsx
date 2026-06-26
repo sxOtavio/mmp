@@ -70,7 +70,7 @@ export function CartDrawer() {
         isOpen ? 'translate-x-0' : 'translate-x-full'
       }`}>
         <div className="flex justify-between items-center p-5 border-b">
-          <h2 className="text-xl font-bold">Meu Carrinho ({totalItens})</h2>
+          <h2 className="text-xl text-black font-bold">Meu Carrinho ({totalItens})</h2>
           <button 
             onClick={() => setIsOpen(false)}
             className="text-2xl text-black hover:text-gray-800"
@@ -109,13 +109,13 @@ export function CartDrawer() {
                       <div className="flex gap-2">
                         <button 
                           onClick={() => updateQuantity(item.gtin, item.quantity - 1)}
-                          className="px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300 transition"
+                          className="px-3 py-1 text-black bg-gray-200 rounded-lg hover:bg-gray-300 transition"
                         >
                           -
                         </button>
                         <button 
                           onClick={() => updateQuantity(item.gtin, item.quantity + 1)}
-                          className="px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300 transition"
+                          className="px-3 py-1 bg-gray-200 text-black rounded-lg hover:bg-gray-300 transition"
                         >
                           +
                         </button>
@@ -132,14 +132,14 @@ export function CartDrawer() {
               </div>
 
               <div className="mt-6 pt-4 border-t">
-                <div className="flex justify-between items-center text-lg font-bold mb-4">
+                <div className="flex justify-between text-black items-center text-lg font-bold mb-4">
                   <span>Total:</span>
                   <span className="text-red-600">R$ {cartTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex gap-3">
                   <button 
                     onClick={clearCart}
-                    className="flex-1 bg-gray-200 py-3 rounded-lg hover:bg-gray-300 transition"
+                    className="flex-1 bg-gray-300 py-3 rounded-lg hover:bg-gray-300 transition"
                   >
                     Limpar
                   </button>
