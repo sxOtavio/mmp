@@ -1,20 +1,18 @@
 import { NextResponse } from "next/server";
 import { pool } from "../../../lib/db";
-import { Preference } from "mercadopago";
-import { client as mpClient } from "@/lib/mercadoPago";
 import jwt from "jsonwebtoken";
+import { criarCheckout } from "@/lib/pagBank";
 
 export async function POST(request) {
   let client;
 
   try {
     client = await pool.connect();
-
     const body = await request.json();
-    const { customer, items, total } = body;
+    const { customer, items, total, pagamento, parcelas } = body;
+    console.log(" Dados Recebidos do pedido:", body);
 
     const authHeader = request.headers.get("authorization");
-
     if (!authHeader) {
       return NextResponse.json(
         { error: "Token não enviado" },
@@ -25,9 +23,19 @@ export async function POST(request) {
     const token = authHeader.replace("Bearer ", "");
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    const userResult = await client.query(
+      `SELECT cpf FROM users WHERE id = $1`,
+      [decoded.userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      throw new Error("Usuário não encontrado");
+    }
+
+    const user = userResult.rows[0];
+
     await client.query("BEGIN");
 
-    // Criar pedido
     const orderResult = await client.query(
       `
       INSERT INTO orders (user_id, status, total)
@@ -36,13 +44,10 @@ export async function POST(request) {
       `,
       [decoded.userId, total]
     );
-
     const order = orderResult.rows[0];
 
-    // Inserir itens
     for (const item of items) {
       const unitPrice = Number(item.precoPromocional) || Number(item.precoNormal);
-
       await client.query(
         `
         INSERT INTO order_items (order_id, product_id, quantity, unit_price, product_name)
@@ -52,57 +57,75 @@ export async function POST(request) {
       );
     }
 
-    // PREFERÊNCIA NO MERCADO PAGO
-    const preference = new Preference(mpClient);
+    const cpfLimpo = user.cpf ? user.cpf.replace(/\D/g, '') : '';
+    const cepLimpo = customer.cep ? customer.cep.replace(/\D/g, '') : '';
+    const cepFormatado = cepLimpo.padStart(8, '0');
 
-    const preferenceResult = await preference.create({
-      body: {
-        items: items.map((item) => ({
-          id: String(item.gtin),
-          title: item.nome,
-          description: item.nome,
-          quantity: Number(item.quantity),
-          currency_id: "BRL",
-          unit_price: Number(item.precoPromocional) || Number(item.precoNormal),
-        })),
-        payer: {
-          email: customer.email,
-        },
-        external_reference: String(order.id),
-        back_urls: {
-          success: `${process.env.NEXT_PUBLIC_APP_URL}/success`,
-          failure: `${process.env.NEXT_PUBLIC_APP_URL}/failure`,
-          pending: `${process.env.NEXT_PUBLIC_APP_URL}/pending`,
-        },
-        // auto_return: "approved", // Descomente em produção
+    const pagbankItems = items.map((item) => ({
+      reference_id: String(item.gtin),
+      name: item.nome,
+      quantity: Number(item.quantity),
+      unit_amount: Math.round((Number(item.precoPromocional) || Number(item.precoNormal)) * 100),
+    }));
+
+    // Montando os dados para enviar ao PagBank Checkout
+    const dadosCheckout = {
+      reference_id: `checkout-${order.id}`,
+      
+      customer: {
+        name: customer.nome,
+        email: customer.email,
+        tax_id: cpfLimpo,
       },
-    });
+      
+      items: pagbankItems,
+      
+      payment_methods: [
+        { type: "CREDIT_CARD" },
+        { type: "BOLETO" },
+        { type: "PIX" }
+      ],
+      
+      redirect_urls: {
+        success: `${process.env.NEXT_PUBLIC_APP_URL}/success`,
+        failure: `${process.env.NEXT_PUBLIC_APP_URL}/failure`,
+        pending: `${process.env.NEXT_PUBLIC_APP_URL}/pending`
+      }
+      
+      // tenho q recolocar o  webhook notification_urls e mudar o status de pending para paid quando receber o webhook
+      
+    };
 
-    console.log(" Preference Result COMPLETO:");
-    console.dir(preferenceResult, { depth: null });
+    console.log("Enviando para PagBank Checkout:", JSON.stringify(dadosCheckout, null, 2));
 
-    
-    const initPoint = preferenceResult.body?.init_point || preferenceResult.init_point;
-    const sandboxInitPoint = preferenceResult.body?.sandbox_init_point || preferenceResult.sandbox_init_point;
-
-    console.log(" Init Point:", initPoint);
-    console.log(" Sandbox Init Point:", sandboxInitPoint);
-
-    if (!initPoint && !sandboxInitPoint) {
-      console.error(" Nenhum init_point encontrado!");
-      console.log("Objeto completo:", JSON.stringify(preferenceResult, null, 2));
-      throw new Error("Mercado Pago não retornou init_point");
+    const accessToken = process.env.PAGBANK_SANDBOX_TOKEN;
+    if (!accessToken) {
+      throw new Error("Token do PagBank não configurado no .env.local");
     }
+
+    const respostaCheckout = await criarCheckout(dadosCheckout, accessToken);
+    console.log(" Resposta Checkout:", JSON.stringify(respostaCheckout, null, 2));
+
+    let paymentLink = null;
+    if (respostaCheckout?.links) {
+      const payLink = respostaCheckout.links.find(l => l.rel === "PAY" || l.rel === "CHECKOUT");
+      paymentLink = payLink?.href;
+    }
+
+    if (!paymentLink) {
+      console.error("❌ Nenhum link de checkout encontrado:", respostaCheckout);
+      throw new Error("PagBank não retornou um link de checkout");
+    }
+
+    console.log(" Link de checkout:", paymentLink);
 
     await client.query("COMMIT");
 
     return NextResponse.json({
       success: true,
       orderId: order.id,
-      init_point: initPoint,
-      sandbox_init_point: sandboxInitPoint,
-      //retorne a preferência completa para debug
-      preference: preferenceResult.body || preferenceResult,
+      payment_link: paymentLink,
+      pagbank_response: respostaCheckout,
     });
 
   } catch (error) {
@@ -110,15 +133,26 @@ export async function POST(request) {
       await client.query("ROLLBACK");
     }
 
-    console.error("❌ Erro na API:", error);
+    console.error("❌ Erro na API de pedido:", error);
+
+    let statusCode = 500;
+    let errorMessage = error.message;
+
+    if (error.message.includes("401")) {
+      statusCode = 401;
+      errorMessage = "Erro de autenticação com o PagBank. Verifique o token.";
+    } else if (error.message.includes("400")) {
+      statusCode = 400;
+      errorMessage = `Dados inválidos para o PagBank: ${error.message}`;
+    }
 
     return NextResponse.json(
       {
         success: false,
-        error: error.message,
-        details: error.response?.data || error,
+        error: errorMessage,
+        details: error.response?.data || error.toString(),
       },
-      { status: error.status || 500 }
+      { status: statusCode }
     );
   } finally {
     if (client) {

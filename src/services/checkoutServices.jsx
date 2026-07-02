@@ -67,3 +67,31 @@ cartTotal
     throw error;
   }
 }
+
+//lidando com o shipping=====================================
+
+export const fetchShippingPrice = async ({ customer }) => {
+  try {
+    // Substitua pela URL da sua rota do backend (ex: NodeJS, Python, etc)
+    const API_URL = '/api/shipping/calculate'; 
+
+    const response = await fetch('/api/shipping', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+         body: JSON.stringify({ customer }), 
+    });
+
+    if (!response.ok) {
+      throw new Error(` SERVICE Erro no servidor: ${response.status} - ${response.statusText}`);
+    }
+
+     const data = await response.json();
+    return data;
+
+  } catch (error) {
+    console.error(" SERVICE Erro na requisição do Service fetchShippingPrice:", error);
+    throw error; // Repassa o erro para o bloco catch do seu hook tratar
+  }
+};

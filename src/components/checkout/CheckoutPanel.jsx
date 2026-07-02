@@ -8,15 +8,17 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function CheckoutPanel() {
-  const {loadCurrentUser, cart, cartTotal, clearCart, user } = useUser();
-  const{loadDelivery}=useDelivery();
+  const { loadCurrentUser, cart, cartTotal, clearCart, user } = useUser();
+  const { loadDelivery, loadShipping } = useDelivery();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
+  const [isCalculatingFrete, setIsCalculatingFrete] = useState(false);
   const [formData, setFormData] = useState({
     nome: "",
     email: "",
     telefone: "",
+    cpf: "", 
     endereco: "",
     numero: "",
     complemento: "",
@@ -25,6 +27,7 @@ export default function CheckoutPanel() {
     cep: "",
     pagamento: "credito",
     parcelas: "1",
+    cpfNaNota: false, 
   });
 
   useEffect(() => {
@@ -34,37 +37,33 @@ export default function CheckoutPanel() {
   }, [cart, router]);
 
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setFormData({
+      ...formData,
+      [name]: type === "checkbox" ? checked : value,
+    });
   };
 
   // ========= lida com dados ja inseridos pelo usuario na criação da conta ==============
+  const handleUserData = async () => {
+    const user = await loadCurrentUser();
+    console.log("DADOS DE USUARIO RECUPERADOS", user);
+    setFormData((prev) => ({
+      ...prev,
+      nome: user.name || "",
+      email: user.email || "",
+      telefone: user.phone || "",
+      cpf: user.cpf || "", 
+      endereco: user.address || "",
+      numero: user.number || "",
+      complemento: user.complement || "",
+      bairro: user.region || "",
+      cidade: user.city || "",
+      cep: user.zip_code || "",
+    }));
+  };
 
-
-const handleUserData = async () => {
-  const user = await loadCurrentUser();
-console.log("DADOS DE USUARIO RECUPERADOS", user);
-  setFormData(prev => ({
-    ...prev,
-    nome: user.name,
-    email: user.email,
-    telefone: user.phone,
-    endereco: user.address,
-    numero: user.number,
-    complemento: user.complement,
-    bairro: user.region,
-    cidade: user.city,
-    cep: user.zip_code
-  }));
-};
-/*  
-  faltou pensar se a pessoa nao tiver logada
-  como ele responde
-
-  faltou terminar o cpf na nota, ele ja recupera o cpf do banco
-
-    */
-
-  const handleNextStep = (e) => {
+ /* const handleNextStep = (e) => {
     e.preventDefault();
     if (
       !formData.nome ||
@@ -76,34 +75,116 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
       return;
     }
     setStep(2);
-  };
-// =========== AQUI ELE MANDA PRO USE DELIVERY E COMEÇA A TRATAR O PEDIDO ===============
+  };*/
+
+  // =========== AQUI ELE MANDA PRO USE DELIVERY E COMEÇA A TRATAR O PEDIDO ===============
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    // Valida CPF se marcado para CPF na nota
+    if (formData.cpfNaNota && !formData.cpf) {
+      alert("⚠️ Você marcou 'CPF na nota' mas não preencheu o CPF.");
+      setIsSubmitting(false);
+      return;
+    }
+
     setTimeout(() => {
       console.log("Pedido finalizado:", {
         ...formData,
+       
         itens: cart,
         total: cartTotal,
+        shippingPrice: formData.price,
       });
-  //----- chamando função de submit
-
-      loadDelivery(formData,cart,cartTotal);
-
+      //----- chamando função de submit
+      loadDelivery(formData, cart, cartTotal);
       alert("✅ Pedido finalizado com sucesso!");
-     // clearCart();
-      //router.push("/pedido-confirmado");
+      // clearCart();
     }, 1500);
-
   };
+  const handleCalculateShipping = async () => {
+  if (!formData.bairro) {
+    alert("⚠️ Selecione um bairro para calcular o frete.");
+    return;
+  }
 
-  const getValorParcela = () => {
-    const parcelas = parseInt(formData.parcelas);
-    if (parcelas === 1) return cartTotal;
-    return (cartTotal / parcelas).toFixed(2);
-  };
+  setIsCalculatingFrete(true);
+  try {
+    const res = await loadShipping(formData);
+    
+    console.log("📦 Resposta recebida:", res);
+    
+    // Tenta extrair o preço de diferentes estruturas
+    let precoFrete = null;
+    let customerData = null;
+    
+    // Estrutura 1: { customer: { price: 12 } }
+    if (res?.customer?.price !== undefined) {
+      precoFrete = res.customer.price;
+      customerData = res.customer;
+    } 
+    // Estrutura 2: { customer: { preco_frete: 12 } }
+    else if (res?.customer?.preco_frete !== undefined) {
+      precoFrete = res.customer.preco_frete;
+      customerData = res.customer;
+    }
+    // Estrutura 3: { price: 12 } (direto)
+    else if (res?.price !== undefined) {
+      precoFrete = res.price;
+      customerData = res;
+    }
+    // Estrutura 4: { preco_frete: 12 } (direto)
+    else if (res?.preco_frete !== undefined) {
+      precoFrete = res.preco_frete;
+      customerData = res;
+    }
+    
+    if (precoFrete !== null && !isNaN(precoFrete)) {
+      setFormData(prev => ({
+        ...prev,
+        preco_frete: precoFrete,
+        price: precoFrete,
+        ...(customerData && {
+          acepted: customerData.acepted || false
+        })
+      }));
+      
+      alert(`✅ Frete calculado: R$ ${precoFrete.toFixed(2)}`);
+    } else {
+      alert("⚠️ Não foi possível encontrar o valor do frete na resposta");
+      console.error("Estrutura da resposta:", JSON.stringify(res, null, 2));
+    }
+    
+  } catch (error) {
+    console.error("❌ Erro detalhado:", error);
+    alert(`❌ Erro ao calcular frete: ${error.message || "Tente novamente"}`);
+  } finally {
+    setIsCalculatingFrete(false);
+  }
+};
+
+// Função para avançar (já com frete calculado)
+const handleNextStep = (e) => {
+  e.preventDefault();
+  
+  if (!formData.nome || !formData.endereco || !formData.cidade || !formData.cep) {
+    alert("Preencha todos os campos obrigatórios");
+    return;
+  }
+
+  if (!formData.bairro) {
+    alert("⚠️ Selecione um bairro.");
+    return;
+  }
+
+  if (!formData.preco_frete) {
+    alert("⚠️ Calcule o frete antes de continuar.");
+    return;
+  }
+
+  setStep(2);
+};
 
   if (cart.length === 0) {
     return (
@@ -130,27 +211,43 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
           <div className="flex items-center gap-2 md:gap-8">
             <div className="flex flex-col items-center">
               <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold transition-all duration-300 ${step === 1 ? "bg-yellow-500 text-white shadow-lg scale-110" : step > 1 ? "bg-green-500 text-white" : "bg-gray-200 text-gray-400"}`}
+                className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold transition-all duration-300 ${
+                  step === 1
+                    ? "bg-yellow-500 text-white shadow-lg scale-110"
+                    : step > 1
+                    ? "bg-green-500 text-white"
+                    : "bg-gray-200 text-gray-400"
+                }`}
               >
                 {step > 1 ? "✓" : "1"}
               </div>
               <span
-                className={`text-xs mt-2 ${step === 1 ? "text-yellow-600 font-medium" : "text-black"}`}
+                className={`text-xs mt-2 ${
+                  step === 1 ? "text-yellow-600 font-medium" : "text-black"
+                }`}
               >
                 Endereço
               </span>
             </div>
             <div
-              className={`w-12 md:w-24 h-0.5 rounded-full transition-all duration-300 ${step > 1 ? "bg-green-500" : "bg-gray-200"}`}
+              className={`w-12 md:w-24 h-0.5 rounded-full transition-all duration-300 ${
+                step > 1 ? "bg-green-500" : "bg-gray-200"
+              }`}
             ></div>
             <div className="flex flex-col items-center">
               <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold transition-all duration-300 ${step === 2 ? "bg-yellow-500 text-white shadow-lg scale-110" : "bg-gray-200 text-gray-400"}`}
+                className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold transition-all duration-300 ${
+                  step === 2
+                    ? "bg-yellow-500 text-white shadow-lg scale-110"
+                    : "bg-gray-200 text-gray-400"
+                }`}
               >
                 2
               </div>
               <span
-                className={`text-xs mt-2 ${step === 2 ? "text-yellow-600 font-medium" : "text-black"}`}
+                className={`text-xs mt-2 ${
+                  step === 2 ? "text-yellow-600 font-medium" : "text-black"
+                }`}
               >
                 Pagamento
               </span>
@@ -217,6 +314,29 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                         className="placeholder:text-gray-600 w-full border-2 border-gray-200 rounded-xl px-4 py-3"
                       />
                     </div>
+                    {/* <-- CAMPO CPF ADICIONADO AQUI --> */}
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-2">
+                        CPF {formData.cpfNaNota && "*"}
+                      </label>
+                      <input
+                        type="text"
+                        name="cpf"
+                        value={formData.cpf}
+                        onChange={handleInputChange}
+                        placeholder="000.000.000-00"
+                        className={`placeholder:text-gray-600 w-full border-2 rounded-xl px-4 py-3 ${
+                          formData.cpfNaNota && !formData.cpf
+                            ? "border-red-400 focus:border-red-500"
+                            : "border-gray-200 focus:border-yellow-400"
+                        }`}
+                      />
+                      {formData.cpfNaNota && !formData.cpf && (
+                        <p className="text-red-500 text-xs mt-1">
+                          ⚠️ CPF é obrigatório para nota fiscal
+                        </p>
+                      )}
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-black mb-2">
                         CEP *
@@ -269,18 +389,61 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-black mb-2">
-                        Bairro *
+                      <label className="block text-sm font-medium text-black mb-2" htmlFor="bairro-df-busca">
+                        Bairro / Região Administrativa:
                       </label>
-                      <input
-                        type="text"
-                        name="bairro"
-                        required
-                        value={formData.bairro}
+                      
+                      
+                      <input 
+                        list="bairros-df-lista" 
+                        id="bairro-df-busca" 
                         onChange={handleInputChange}
-                        className="placeholder:text-gray-600 text-black w-full border-2 border-gray-200 rounded-xl px-4 py-3"
+                        name="bairro" 
+                        value={formData.bairro}
+                        placeholder="Digite para buscar..." 
+                        className="placeholder:text-black w-full border-2 border-gray-200 rounded-xl px-4 py-3" 
                       />
+
+                    
+                      <datalist id="bairros-df-lista">
+                        <option value="Águas Claras" />
+                        <option value="Arapoanga" />
+                        <option value="Brazlândia" />
+                        <option value="Candangolândia" />
+                        <option value="Ceilândia" />
+                        <option value="Cruzeiro" />
+                        <option value="Fercal" />
+                        <option value="Gama" />
+                        <option value="Guará" />
+                        <option value="Itapoã" />
+                        <option value="Jardim Botânico" />
+                        <option value="Lago Norte" />
+                        <option value="Lago Sul" />
+                        <option value="Núcleo Bandeirante" />
+                        <option value="Paranoá" />
+                        <option value="Park Way" />
+                        <option value="Planaltina" />
+                        <option value="Plano Piloto (Asa Sul, Asa Norte, Centro)" />
+                        <option value="Recanto das Emas" />
+                        <option value="Riacho Fundo" />
+                        <option value="Riacho Fundo II" />
+                        <option value="Samambaia" />
+                        <option value="Santa Maria" />
+                        <option value="São Sebastião" />
+                        <option value="SCIA / Estrutural" />
+                        <option value="SIA" />
+                        <option value="Sobradinho" />
+                        <option value="Sobradinho II" />
+                        <option value="Sol Nascente / Pôr do Sol" />
+                        <option value="Sudoeste / Octogonal" />
+                        <option value="Taguatinga" />
+                        <option value="Varjão" />
+                        <option value="Vicente Pires" />
+                        <option value="Vila Estrutural" />
+                        <option value="Vila Telebrasília" />
+                      </datalist>
                     </div>
+
                     <div>
                       <label className="block text-sm font-medium text-black mb-2">
                         Cidade *
@@ -295,19 +458,44 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                       />
                     </div>
 
-
-                    <div className="grid lg:grid-cols-3 ">
-                      <input type="checkbox" name="" id="" /><h2>Marque se desejar CPF na nota</h2>
+                    
+                    <div className="md:col-span-2 flex items-center gap-3 mt-2 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                      <input
+                        type="checkbox"
+                        name="cpfNaNota"
+                        id="cpfNaNota"
+                        checked={formData.cpfNaNota}
+                        onChange={handleInputChange}
+                        className="w-5 h-5 text-yellow-500 rounded border-gray-300 focus:ring-yellow-400"
+                      />
+                      <label
+                        htmlFor="cpfNaNota"
+                        className="text-sm font-medium text-gray-700 cursor-pointer"
+                      >
+                        📄 Desejo CPF na nota fiscal
+                      </label>
+                      {formData.cpfNaNota && (
+                        <span className="text-xs text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full">
+                          Obrigatório preencher o CPF
+                        </span>
+                      )}
                     </div>
-                 </div>
-                  <div className="flex justify-end">
-                    <button
-                      type="submit"
-                      className="bg-yellow-500 text-white px-8 py-3 rounded-xl font-medium hover:bg-yellow-600 transition-all flex items-center gap-2"
-                    >
-                      Continuar →
-                    </button>
                   </div>
+<div className="flex gap-3">
+  <button
+    type="button"
+    onClick={handleCalculateShipping}
+    className="bg-blue-500 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-600"
+  >
+    Calcular Frete
+  </button>
+  <button
+    type="submit"
+    className="bg-yellow-500 text-white px-8 py-3 rounded-xl font-medium hover:bg-yellow-600"
+  >
+    Continuar →
+  </button>
+</div>
                 </form>
               </div>
             ) : (
@@ -320,22 +508,16 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[
-                      {
-                        value: "credito",
-                        label: "Cartão de Crédito",
-                        icon: "💳",
-                      },
-                      {
-                        value: "debito",
-                        label: "Cartão de Débito",
-                        icon: "💳",
-                      },
-                      { value: "pix", label: "PIX", icon: "⚡" },
+                      { value: "pagBank", label: "Pagar pelo PagBank", icon: "" },
                       { value: "dinheiro", label: "Dinheiro", icon: "💰" },
                     ].map((option) => (
                       <label
                         key={option.value}
-                        className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer ${formData.pagamento === option.value ? "border-yellow-500 bg-yellow-50" : "border-gray-200"}`}
+                        className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer ${
+                          formData.pagamento === option.value
+                            ? "border-yellow-500 bg-yellow-50"
+                            : "border-gray-200"
+                        }`}
                       >
                         <input
                           type="radio"
@@ -360,6 +542,13 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
                       />
                     </div>
                   )}
+
+                {/*Tratando do frete*/}
+
+                    <div className="bg-yellow-50 text-black rounded-xl p-5 space-y-4">
+                      <h3>O frete para o bairro / R.A. de {formData.bairro} endereço fica: R$ {formData.preco_frete?.toFixed(2)}</h3>
+                      <h3>O valor total fica: R$  {(cartTotal + formData.preco_frete).toFixed(2)}</h3>
+                    </div>
 
                   <div className="flex gap-4">
                     <button
@@ -407,7 +596,7 @@ console.log("DADOS DE USUARIO RECUPERADOS", user);
               </div>
               <div className="border-t pt-4">
                 <div className="flex justify-between text-black font-bold text-lg">
-                  <span>Total:</span>
+                  <span>Total do pedido:</span>
                   <span className="text-red-600">
                     R$ {cartTotal.toFixed(2)}
                   </span>
