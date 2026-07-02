@@ -1,17 +1,71 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { useProducts } from "@/hooks/useProducts";
+import { useState, useEffect, useRef } from "react";
 import { useUser } from '@/contexts/UserContext';
 
+function hideCard(price, promotion_price) {
+  if (promotion_price && promotion_price > price) {
+    return "hidden";
+  }
+  return "";
+}
 
-export default function Products() {
-  const { products, loading, loadProductsData } = useProducts();
+export default function PromoProducts({ promoProducts = [], loading = false }) {
   const { addToCart } = useUser();
+  const [currentPage, setCurrentPage] = useState(0);
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
+  const carouselRef = useRef(null);
 
+  // Filtra produtos válidos (com promoção menor que o preço normal)
+  const validProducts = promoProducts?.filter(
+    (p) => p.promotion_price && p.promotion_price < p.price
+  ) || [];
+
+  const ITEMS_PER_PAGE = 12;
+  const totalPages = Math.ceil((validProducts?.length || 0) / ITEMS_PER_PAGE);
+
+  // Produtos da página atual
+  const currentProducts = validProducts.slice(
+    currentPage * ITEMS_PER_PAGE,
+    (currentPage + 1) * ITEMS_PER_PAGE
+  );
+
+  // Resetar página quando produtos mudarem
   useEffect(() => {
-    loadProductsData();
-  }, [loadProductsData]);
+    setCurrentPage(0);
+  }, [promoProducts]);
+
+  // Navegação
+  const nextPage = () => {
+    if (currentPage < totalPages - 1) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const prevPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  // Touch/swipe para mobile
+  const handleTouchStart = (e) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStart - touchEnd > 75) {
+      nextPage();
+    }
+    if (touchStart - touchEnd < -75) {
+      prevPage();
+    }
+  };
 
   // Função para adicionar ao carrinho
   const handleAddToCart = (product) => {
@@ -21,143 +75,118 @@ export default function Products() {
       precoNormal: product.price,
       precoPromocional: product.promotion_price || null,
       estoque: product.stock || 999,
-      categoria: product.category || "Promoção",
+      categoria: product.category || "Produto",
     };
     
     addToCart(produtoParaCarrinho, 1);
-    
-    // Feedback visual no botão
-    const btn = document.activeElement;
-    if (btn) {
-      const originalText = btn.innerHTML;
-      btn.innerHTML = "✓ Adicionado!";
-      setTimeout(() => {
-        btn.innerHTML = originalText;
-      }, 1000);
-    }
+    console.log(`✅ ${product.name} adicionado ao carrinho!`);
   };
 
-  if (loading || !products || products.length === 0) {
+  if (loading) {
     return (
       <section className="px-6 py-8 bg-gray-50 rounded text-center text-gray-500">
-        Carregando ofertas...
+        <div className="flex flex-col items-center justify-center gap-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-400"></div>
+          <span>Carregando ofertas em promoção...</span>
+        </div>
       </section>
     );
   }
 
-  // PEGA SOMENTE PRODUTOS PROMOCIONAIS
-  const produtosPromocionais = products
-    .filter(
-      (p) =>
-        p.promotion_price &&
-        Number(p.promotion_price) <= Number(p.price)
-    )
-    .slice(0, 30);
-
-  // fallback caso não tenha promoções
-  const produtosCarrossel =
-    produtosPromocionais.length > 0
-      ? produtosPromocionais
-      : products.slice(0, 30);
-
-  const metade = Math.ceil(produtosCarrossel.length / 2);
-
-  const linha1 = produtosCarrossel.slice(0, metade);
-  const linha2 = produtosCarrossel.slice(metade);
-
-  const priceCorrection = (p) => {
-    if (p.promotion_price == null || p.promotion_price == 0) {
-      return (
-        <p className="text-black font-bold text-sm">
-          <br />
-          R$ {Number(p.price).toFixed(2)}
-        </p>
-      );
-    }
-
-    if (Number(p.promotion_price) < Number(p.price)) {
-      return (
-        <>
-          <p className="line-through text-gray-400 text-[10px]">
-            R$ {Number(p.price).toFixed(2)}
-          </p>
-
-          <p className="text-red-600 font-bold text-sm">
-            R$ {Number(p.promotion_price).toFixed(2)}
-          </p>
-        </>
-      );
-    }
-
+  if (!validProducts || validProducts.length === 0) {
     return (
-      <p className="font-bold text-sm">
-        R$ {Number(p.price).toFixed(2)}
-      </p>
+      <section className="px-6 py-8 bg-gray-50 rounded text-center text-gray-500">
+        🛒 Nenhum produto em promoção no momento.
+      </section>
     );
-  };
+  }
 
-  const renderizarLinhaCarrossel = (
-    listaProdutos,
-    tempoSegundos
-  ) => {
-    // DUPLICA APENAS UMA VEZ
-    const listaMultiplicada = [
-      ...listaProdutos,
-      ...listaProdutos,
-    ];
+  return (
+    <section className="px-6 py-8 bg-gray-50">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold text-gray-800">
+          Preços promocionais atualizados, fique por dentro!
+        </h2>
+        
+        {totalPages > 1 && (
+          <span className="text-sm text-gray-500">
+            Página {currentPage + 1} de {totalPages}
+          </span>
+        )}
+      </div>
 
-    return (
-      <div className="w-full overflow-hidden relative py-2">
-        <div
-          className="flex w-max gap-4 hover:[animation-play-state:paused]"
-          style={{
-            animationName: "rolagemInfinitaLateral",
-            animationDuration: tempoSegundos,
-            animationTimingFunction: "linear",
-            animationIterationCount: "infinite",
-          }}
-        >
-          {listaMultiplicada.map((p, index) => (
+      <div 
+        ref={carouselRef}
+        className="relative"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Botão anterior */}
+        {totalPages > 1 && (
+          <button
+            onClick={prevPage}
+            disabled={currentPage === 0}
+            className={`absolute left-0 top-1/2 -translate-y-1/2 -ml-4 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed hidden md:block ${
+              currentPage === 0 ? "opacity-0 pointer-events-none" : ""
+            }`}
+          >
+            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
+
+        {/* Grid de produtos */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {currentProducts.map((p, index) => (
             <div
-              key={`${p.gtin_code || index}-${index}`}
-              className="
-                bg-white
-                p-4
-                rounded-xl
-                shadow-sm
-                w-52
-                flex-shrink-0
-                border
-                border-gray-100
-                select-none
-                transition-all
-                duration-300
-                hover:-translate-y-1
-                hover:shadow-lg
-              "
+              key={`${p.gtin_code || p.id || index}`}
+              className={`bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow ${hideCard(p.price, p.promotion_price)}`}
             >
+<<<<<<< Updated upstream:src/components/user/PProducts.jsx
               <div className="bg-gray-100 h-40 rounded mb-2 overflow-hidden flex items-center justify-center text-[10px] text-black">
+=======
+              {/* Imagem */}
+              <div className="bg-gray-100 h-40 rounded mb-2 overflow-hidden flex items-center justify-center">
+>>>>>>> Stashed changes:src/components/PProducts.jsx
                 {p.image_url ? (
-                  <img
-                    src={p.image_url}
-                    alt={p.name}
-                    loading="lazy"
-                    className="w-full h-full object-contain"
-                  />
+                  <img src={p.image_url} alt={p.name} className="w-full h-full object-contain" />
                 ) : (
-                  <span>Sem Imagem</span>
+                  <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
                 )}
               </div>
 
+<<<<<<< Updated upstream:src/components/user/PProducts.jsx
               <h3
                 className="text-xs font-semibold text-black truncate mb-1"
                 title={p.name}
               >
+=======
+              {/* Nome */}
+              <h3 className="font-bold text-sm line-clamp-2 min-h-[40px]">
+>>>>>>> Stashed changes:src/components/PProducts.jsx
                 {p.name}
               </h3>
 
-              {priceCorrection(p)}
+              {/* Preços */}
+              <p className="line-through text-gray-400 text-sm mt-1">
+                R$ {Number(p.price).toFixed(2)}
+              </p>
+              <p className="text-red-600 font-bold text-lg">
+                R$ {Number(p.promotion_price).toFixed(2)}
+              </p>
 
+              {/* Desconto */}
+              {p.price && p.promotion_price && (
+                <p className="text-green-600 text-xs font-semibold">
+                  {Math.round(((p.price - p.promotion_price) / p.price) * 100)}% OFF
+                </p>
+              )}
+
+              {/* Botão */}
               <button
                 onClick={() => handleAddToCart(p)}
                 className="
@@ -180,32 +209,59 @@ export default function Products() {
             </div>
           ))}
         </div>
+
+        {/* Botão próximo */}
+        {totalPages > 1 && (
+          <button
+            onClick={nextPage}
+            disabled={currentPage === totalPages - 1}
+            className={`absolute right-0 top-1/2 -translate-y-1/2 -mr-4 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed hidden md:block ${
+              currentPage === totalPages - 1 ? "opacity-0 pointer-events-none" : ""
+            }`}
+          >
+            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
       </div>
-    );
-  };
 
-  return (
-    <section className="px-6 py-8 bg-gray-50 rounded group">
-      <style>{`
-        @keyframes rolagemInfinitaLateral {
-          from {
-            transform: translate3d(0, 0, 0);
-          }
+      {/* Indicadores de página */}
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-2 mt-6">
+          {Array.from({ length: totalPages }).map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentPage(idx)}
+              className={`h-2 rounded-full transition-all ${
+                currentPage === idx
+                  ? "w-6 bg-yellow-400"
+                  : "w-2 bg-gray-300 hover:bg-gray-400"
+              }`}
+            />
+          ))}
+        </div>
+      )}
 
-          to {
-            transform: translate3d(-50%, 0, 0);
-          }
-        }
-      `}</style>
-
-      <h2 className="font-bold mb-6 text-gray-800 text-xl">
-        Ofertas imperdíveis, só para você!
-      </h2>
-
-      <div className="flex flex-col gap-2">
-        {renderizarLinhaCarrossel(linha1, "60s")}
-        {renderizarLinhaCarrossel(linha2, "45s")}
-      </div>
+      {/* Navegação mobile */}
+      {totalPages > 1 && (
+        <div className="flex justify-between gap-4 mt-4 md:hidden">
+          <button
+            onClick={prevPage}
+            disabled={currentPage === 0}
+            className="flex-1 py-2 bg-white border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ← Anterior
+          </button>
+          <button
+            onClick={nextPage}
+            disabled={currentPage === totalPages - 1}
+            className="flex-1 py-2 bg-white border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Próximo →
+          </button>
+        </div>
+      )}
     </section>
   );
 }
