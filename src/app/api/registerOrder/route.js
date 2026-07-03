@@ -141,6 +141,7 @@ export async function POST(request) {
     if (error.message.includes("401")) {
       statusCode = 401;
       errorMessage = "Erro de autenticação com o PagBank. Verifique o token.";
+      
     } else if (error.message.includes("400")) {
       statusCode = 400;
       errorMessage = `Dados inválidos para o PagBank: ${error.message}`;

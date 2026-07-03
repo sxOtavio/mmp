@@ -6,21 +6,28 @@ const loadDelivery = async (formData, cart, cartTotal) => {
   try {
     console.log("📦 Enviando pedido:", { formData, cart, cartTotal });
 
+  
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      throw new Error('Usuário não está logado. Faça login para finalizar o pedido.');
+    }
+
+    console.log('🔑 Token encontrado:', token ? '✅ Sim' : '❌ Não');
+
+  
     const response = await fetchRegisterOrder({
       customer: formData,
       items: cart,
       total: cartTotal
-    });
+    }, token); // ← Passa o token como segundo parâmetro
 
     console.log("✅ Resposta COMPLETA da API:");
     console.log(JSON.stringify(response, null, 2));
 
-    // 🔧 CORREÇÃO: Usa payment_link em vez de init_point
-    // O PagBank retorna payment_link, não init_point (isso é do Mercado Pago)
     const checkoutUrl = response?.payment_link;
     
     console.log("🔗 Link de pagamento encontrado:", checkoutUrl);
-    console.log("📋 Todas as chaves:", Object.keys(response));
 
     if (!checkoutUrl) {
       console.error("❌ API não retornou payment_link!", response);
@@ -35,6 +42,7 @@ const loadDelivery = async (formData, cart, cartTotal) => {
     alert(`Erro ao processar pagamento: ${error.message}`);
   }
 };
+
 
 //Lidando com o calculo do frete
 
