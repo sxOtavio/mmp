@@ -144,12 +144,8 @@ export default function PromoProducts({ promoProducts = [], loading = false }) {
               key={`${p.gtin_code || p.id || index}`}
               className={`bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow ${hideCard(p.price, p.promotion_price)}`}
             >
-<<<<<<< Updated upstream:src/components/user/PProducts.jsx
-              <div className="bg-gray-100 h-40 rounded mb-2 overflow-hidden flex items-center justify-center text-[10px] text-black">
-=======
               {/* Imagem */}
               <div className="bg-gray-100 h-40 rounded mb-2 overflow-hidden flex items-center justify-center">
->>>>>>> Stashed changes:src/components/PProducts.jsx
                 {p.image_url ? (
                   <img src={p.image_url} alt={p.name} className="w-full h-full object-contain" />
                 ) : (
@@ -159,15 +155,8 @@ export default function PromoProducts({ promoProducts = [], loading = false }) {
                 )}
               </div>
 
-<<<<<<< Updated upstream:src/components/user/PProducts.jsx
-              <h3
-                className="text-xs font-semibold text-black truncate mb-1"
-                title={p.name}
-              >
-=======
               {/* Nome */}
               <h3 className="font-bold text-sm line-clamp-2 min-h-[40px]">
->>>>>>> Stashed changes:src/components/PProducts.jsx
                 {p.name}
               </h3>
 

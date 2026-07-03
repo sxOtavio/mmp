@@ -8,14 +8,9 @@ import Categorias from "@/components/user/Categories";
 import PromoProducts from "@/components/user/PProducts";
 import Products from "@/components/user/promoProducts";
 import Footer from "@/components/Footer";
-<<<<<<< Updated upstream:src/components/clients/UserPageClient.jsx
+
 import FiltredProducts from "@/components/user/FiltredProducts";
 import { CartDrawer } from "@/components/user/CartDrawer";
-=======
-import FiltredProducts from "@/components/FiltredProducts";
-import { CartDrawer } from "@/components/CartDrawer";
-import { UserProvider } from "@/contexts/UserContext"; // 👈 Importa o Provider
->>>>>>> Stashed changes:src/components/UserPageClient.jsx
 
 export default function UserPageClient() {
   const [selectedCategory, setSelectedCategory] = useState("Todos");

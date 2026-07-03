@@ -74,9 +74,6 @@ export default function FiltredProducts({
     setCurrentPage(0);
   }, [selectedCategory, searchTerm]);
 
-<<<<<<< Updated upstream:src/components/user/FiltredProducts.jsx
-    // Função para adicionar ao carrinho
-=======
   // Configuração: 3 linhas com 4 colunas = 12 produtos por página
   const ITEMS_PER_PAGE = 12;
 
@@ -143,7 +140,6 @@ export default function FiltredProducts({
   };
 
   // Função para adicionar ao carrinho
->>>>>>> Stashed changes:src/components/FiltredProducts.jsx
   const handleAddToCart = (product) => {
     const produtoParaCarrinho = {
       gtin: product.gtin_code || product.id,
@@ -155,20 +151,7 @@ export default function FiltredProducts({
     };
     
     addToCart(produtoParaCarrinho, 1);
-<<<<<<< Updated upstream:src/components/user/FiltredProducts.jsx
-    
-    // Feedback visual no botão
-    const btn = document.activeElement;
-    if (btn) {
-      const originalText = btn.innerHTML;
-      btn.innerHTML = "✓ Adicionado!";
-      setTimeout(() => {
-        btn.innerHTML = originalText;
-      }, 1000);
-    }
-=======
     console.log(`✅ ${product.name} adicionado ao carrinho!`);
->>>>>>> Stashed changes:src/components/FiltredProducts.jsx
   };
 
   // Renderização do preço
@@ -277,14 +260,10 @@ export default function FiltredProducts({
                 )}
               </div>
 
-<<<<<<< Updated upstream:src/components/user/FiltredProducts.jsx
-              <h3 className="font-bold text-sm text-black line-clamp-2 min-h-[40px]">{p.name}</h3>
-=======
               {/* Nome */}
               <h3 className="font-bold text-sm line-clamp-2 min-h-[40px]">
                 {p.name}
               </h3>
->>>>>>> Stashed changes:src/components/FiltredProducts.jsx
 
               {/* Preço */}
               {priceCorrection(p)}
