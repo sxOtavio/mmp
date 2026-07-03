@@ -8,7 +8,6 @@ import Categorias from "@/components/user/Categories";
 import PromoProducts from "@/components/user/PProducts";
 import Products from "@/components/user/promoProducts";
 import Footer from "@/components/Footer";
-
 import FiltredProducts from "@/components/user/FiltredProducts";
 import { CartDrawer } from "@/components/user/CartDrawer";
 
@@ -33,19 +32,11 @@ export default function UserPageClient() {
         onCategoryChange={setSelectedCategory} 
       />
       <FiltredProducts 
-        products={products}
-        loading={loading}
         selectedCategory={selectedCategory} 
         searchTerm={searchTerm} 
       />
-      <Products 
-        products={products}
-        loading={loading}
-      />
-      <PromoProducts 
-        promoProducts={promoProducts}
-        loading={loading}
-      />
+      <Products />
+      <PromoProducts />
       <Footer />
       <CartDrawer />
     </>

@@ -1,6 +1,6 @@
 'use client';
-
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useProducts } from "@/hooks/useProducts";
 import { useUser } from '@/contexts/UserContext';
 
 
@@ -58,88 +58,22 @@ function matchesCategory(product, selectedCategory) {
   return categories.includes(selectedKey);
 }
 
-export default function FiltredProducts({ 
-  products = [], 
-  loading = false, 
-  selectedCategory = "Todos", 
-  searchTerm = "" 
-}) {
-  const { addToCart } = useUser();
+export default function FiltredProducts({ selectedCategory = "Todos", searchTerm = "" }) {
+  const { products, loading, loadProductsData } = useProducts();
   const [currentPage, setCurrentPage] = useState(0);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+  const { addToCart } = useUser();
 
-  // Resetar página quando categoria ou busca mudar
+  useEffect(() => {
+    loadProductsData();
+  }, [loadProductsData]);
+
   useEffect(() => {
     setCurrentPage(0);
   }, [selectedCategory, searchTerm]);
 
-  // Configuração: 3 linhas com 4 colunas = 12 produtos por página
-  const ITEMS_PER_PAGE = 12;
-
-  // Filtrar produtos
-  const validProducts = products.filter((p) => {
-    if (!p) return false;
-    if (!matchesCategory(p, selectedCategory)) return false;
-
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.trim().toLowerCase();
-      const productName = String(p.name || "").toLowerCase();
-      const productDescription = String(p.description || "").toLowerCase();
-      const productBrand = String(p.brand || "").toLowerCase();
-      const productGtin = String(p.gtin_code || "");
-
-      return (
-        productName.includes(searchLower) ||
-        productDescription.includes(searchLower) ||
-        productBrand.includes(searchLower) ||
-        productGtin.includes(searchLower)
-      );
-    }
-
-    return true;
-  });
-
-  const totalPages = Math.ceil((validProducts?.length || 0) / ITEMS_PER_PAGE);
-
-  // Produtos da página atual
-  const currentProducts = validProducts.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE
-  );
-
-  // Navegação
-  const nextPage = () => {
-    if (currentPage < totalPages - 1) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const prevPage = () => {
-    if (currentPage > 0) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  // Touch/swipe para mobile
-  const handleTouchStart = (e) => {
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchMove = (e) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchEnd = () => {
-    if (touchStart - touchEnd > 75) {
-      nextPage();
-    }
-    if (touchStart - touchEnd < -75) {
-      prevPage();
-    }
-  };
-
-  // Função para adicionar ao carrinho
+    // Função para adicionar ao carrinho
   const handleAddToCart = (product) => {
     const produtoParaCarrinho = {
       gtin: product.gtin_code || product.id,
@@ -151,10 +85,45 @@ export default function FiltredProducts({
     };
     
     addToCart(produtoParaCarrinho, 1);
-    console.log(`✅ ${product.name} adicionado ao carrinho!`);
+    
+    // Feedback visual no botão
+    const btn = document.activeElement;
+    if (btn) {
+      const originalText = btn.innerHTML;
+      btn.innerHTML = "✓ Adicionado!";
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+      }, 1000);
+    }
   };
 
-  // Renderização do preço
+  const ITEMS_PER_PAGE = 12;
+
+  const validProducts =
+    products?.filter((p) => {
+      if (!p) return false;
+      if (!matchesCategory(p, selectedCategory)) return false;
+
+      if (searchTerm.trim()) {
+        const searchLower = searchTerm.trim().toLowerCase();
+        const productName = String(p.name || "").toLowerCase();
+        const productDescription = String(p.description || "").toLowerCase();
+        const productBrand = String(p.brand || "").toLowerCase();
+        const productGtin = String(p.gtin_code || "");
+
+        return (
+          productName.includes(searchLower) ||
+          productDescription.includes(searchLower) ||
+          productBrand.includes(searchLower) ||
+          productGtin.includes(searchLower)
+        );
+      }
+
+      return true;
+    }) || [];
+
+  const totalPages = Math.ceil((validProducts?.length || 0) / ITEMS_PER_PAGE);
+
   const priceCorrection = (p) => {
     if (p.promotion_price == 0 || p.promotion_price == null) {
       return (
@@ -171,9 +140,11 @@ export default function FiltredProducts({
           <p className="line-through text-gray-400 text-[10px]">
             R$ {Number(p.price).toFixed(2)}
           </p>
+
           <p className="text-red-600 font-bold text-sm">
             R$ {Number(p.promotion_price).toFixed(2)}
           </p>
+
           <p className="text-green-600 text-xs font-semibold">
             {Math.round(((p.price - p.promotion_price) / p.price) * 100)}% OFF
           </p>
@@ -186,6 +157,40 @@ export default function FiltredProducts({
         R$ {Number(p.price).toFixed(2)}
       </p>
     );
+  };
+
+  const currentProducts = validProducts.slice(
+    currentPage * ITEMS_PER_PAGE,
+    (currentPage + 1) * ITEMS_PER_PAGE
+  );
+
+  const nextPage = () => {
+    if (currentPage < totalPages - 1) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const prevPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleTouchStart = (e) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStart - touchEnd > 75) {
+      nextPage();
+    }
+    if (touchStart - touchEnd < -75) {
+      prevPage();
+    }
   };
 
   if (loading) {
@@ -227,7 +232,6 @@ export default function FiltredProducts({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Botão anterior - desktop */}
         {totalPages > 1 && (
           <button
             onClick={prevPage}
@@ -242,15 +246,13 @@ export default function FiltredProducts({
           </button>
         )}
 
-        {/* Grid de produtos */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {currentProducts.map((p, index) => (
             <div
               key={`${p.gtin_code || p.id || index}`}
               className="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow"
             >
-              {/* Imagem */}
-              <div className="bg-gray-100 h-40 rounded mb-2 overflow-hidden flex items-center justify-center text-[10px] text-gray-400">
+              <div className="bg-gray-100 w-full h-40 rounded mb-2 overflow-hidden flex items-center justify-center text-[10px] text-gray-400">
                 {p.image_url ? (
                   <img src={p.image_url} alt={p.name} className="w-full h-full object-contain" />
                 ) : (
@@ -260,15 +262,10 @@ export default function FiltredProducts({
                 )}
               </div>
 
-              {/* Nome */}
-              <h3 className="font-bold text-sm line-clamp-2 min-h-[40px]">
-                {p.name}
-              </h3>
+              <h3 className="font-bold text-sm text-black line-clamp-2 min-h-[40px]">{p.name}</h3>
 
-              {/* Preço */}
               {priceCorrection(p)}
 
-              {/* Botão */}
               <button
                 onClick={() => handleAddToCart(p)}
                 className="
@@ -292,7 +289,6 @@ export default function FiltredProducts({
           ))}
         </div>
 
-        {/* Botão próximo - desktop */}
         {totalPages > 1 && (
           <button
             onClick={nextPage}
@@ -308,7 +304,6 @@ export default function FiltredProducts({
         )}
       </div>
 
-      {/* Indicadores de página (dots) */}
       {totalPages > 1 && (
         <div className="flex justify-center gap-2 mt-6">
           {Array.from({ length: totalPages }).map((_, idx) => (
@@ -316,16 +311,13 @@ export default function FiltredProducts({
               key={idx}
               onClick={() => setCurrentPage(idx)}
               className={`h-2 rounded-full transition-all ${
-                currentPage === idx
-                  ? "w-6 bg-yellow-400"
-                  : "w-2 bg-gray-300 hover:bg-gray-400"
+                currentPage === idx ? "w-6 bg-yellow-400" : "w-2 bg-gray-300 hover:bg-gray-400"
               }`}
             />
           ))}
         </div>
       )}
 
-      {/* Navegação mobile */}
       {totalPages > 1 && (
         <div className="flex justify-between gap-4 mt-4 md:hidden">
           <button
