@@ -1,12 +1,12 @@
+// src/app/api/orders/[id]/route.js
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 
-export async function GET (request, { params }) {
+export async function GET(request, { params }) {
   let client;
 
   try {
     const { id } = await params;
-    console.log("params",id);
     client = await pool.connect();
 
     const result = await client.query(`
@@ -16,29 +16,29 @@ export async function GET (request, { params }) {
         o.total,
         o.created_at,
         o.updated_at,
-
-        u.id AS cliente_id,
-        u.name AS cliente_nome,
-        u.phone,
-        u.address,
-        u.number,
-        u.region,
-        u.city,
-
+        o.shipping_frete,
+        
+        o.cliente_nome,
+        o.cliente_telefone,
+        o.cliente_cpf,
+        
+        o.shipping_street AS endereco,
+        o.shipping_number AS numero,
+        o.shipping_complement AS complemento,
+        o.shipping_district AS bairro,
+        o.shipping_city AS cidade,
+        o.shipping_state AS estado,
+        o.shipping_zip AS cep,
+        o.shipping_bairro,
+        
         oi.product_name,
         oi.quantity,
         oi.unit_price
 
       FROM orders o
-
-      INNER JOIN users u
-        ON u.id = o.user_id
-
       INNER JOIN order_items oi
         ON oi.order_id = o.id
-
       WHERE o.id = $1
-
       ORDER BY oi.id ASC
     `, [id]);
 
@@ -49,21 +49,28 @@ export async function GET (request, { params }) {
       );
     }
 
+    const firstRow = result.rows[0];
+    
     const pedido = {
-      id: result.rows[0].order_id,
-      status_pedido: result.rows[0].status,
-      total: Number(result.rows[0].total),
-      created_at: result.rows[0].created_at,
-      updated_at: result.rows[0].updated_at,
-      cliente: {
-        id: result.rows[0].cliente_id,
-        nome: result.rows[0].cliente_nome,
-        telefone: result.rows[0].phone,
-        endereco: result.rows[0].address,
-        numero: result.rows[0].number,
-        bairro: result.rows[0].region,
-        cidade: result.rows[0].city,
-      },
+      id: firstRow.order_id,
+      status_pedido: firstRow.status,
+      total: Number(firstRow.total),
+      created_at: firstRow.created_at,
+      updated_at: firstRow.updated_at,
+      shipping_frete: Number(firstRow.shipping_frete) || 0,
+      
+      cliente_nome: firstRow.cliente_nome || 'Não informado',
+      cliente_telefone: firstRow.cliente_telefone || '',
+      cliente_cpf: firstRow.cliente_cpf || '',
+      
+      cliente_endereco: firstRow.endereco || '',
+      cliente_numero: firstRow.numero || '',
+      cliente_complemento: firstRow.complemento || '',
+      cliente_bairro: firstRow.bairro || '',
+      cliente_cidade: firstRow.cidade || '',
+      cliente_estado: firstRow.estado || 'DF',
+      cliente_cep: firstRow.cep || '',
+      
       itens: result.rows.map(row => ({
         nome: row.product_name,
         quantidade: row.quantity,
@@ -74,7 +81,7 @@ export async function GET (request, { params }) {
     return NextResponse.json(pedido);
 
   } catch (error) {
-    console.error("Erro ao buscar pedido:", error);
+    console.error("❌ Erro ao buscar pedido:", error);
     return NextResponse.json(
       { error: "Erro ao buscar pedido" },
       { status: 500 }

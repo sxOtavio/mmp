@@ -9,8 +9,8 @@ export async function POST(request) {
   try {
     client = await pool.connect();
     const body = await request.json();
-    const { customer, items, total, pagamento, parcelas } = body;
-    console.log(" Dados Recebidos do pedido:", body);
+    const { customer, items, total } = body;
+    console.log("📦 Dados Recebidos do pedido:", body);
 
     const authHeader = request.headers.get("authorization");
     if (!authHeader) {
@@ -36,16 +36,59 @@ export async function POST(request) {
 
     await client.query("BEGIN");
 
+    // 🔥 CALCULA O TOTAL COM FRETE
+    const precoFrete = Number(customer.price) || Number(customer.preco_frete) || 0;
+    const totalComFrete = Number(total) + precoFrete;
+
+    console.log('💰 Total do carrinho:', total);
+    console.log('💰 Frete:', precoFrete);
+    console.log('💰 Total com frete:', totalComFrete);
+
+    // 🔥 SALVA O PEDIDO
     const orderResult = await client.query(
       `
-      INSERT INTO orders (user_id, status, total)
-      VALUES ($1, 'pending', $2)
+      INSERT INTO orders (
+        user_id, 
+        status, 
+        total,
+        shipping_frete,
+        shipping_street,
+        shipping_number,
+        shipping_complement,
+        shipping_district,
+        shipping_city,
+        shipping_state,
+        shipping_zip,
+        shipping_bairro,
+        cliente_nome,
+        cliente_telefone,
+        cliente_cpf
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *
       `,
-      [decoded.userId, total]
+      [
+        decoded.userId,
+        'pending',
+        totalComFrete,
+        precoFrete,
+        customer.endereco || '',
+        customer.numero || '',
+        customer.complemento || '',
+        customer.bairro || '',
+        customer.cidade || '',
+        'DF',
+        customer.cep || '',
+        customer.bairro || '',
+        customer.nome || '',
+        customer.telefone || '',
+        customer.cpf || ''
+      ]
     );
+
     const order = orderResult.rows[0];
 
+    // 🔥 SALVA OS ITENS
     for (const item of items) {
       const unitPrice = Number(item.precoPromocional) || Number(item.precoNormal);
       await client.query(
@@ -57,6 +100,7 @@ export async function POST(request) {
       );
     }
 
+    // 🔥 PREPARA DADOS PARA O PAGBANK
     const cpfLimpo = user.cpf ? user.cpf.replace(/\D/g, '') : '';
     const cepLimpo = customer.cep ? customer.cep.replace(/\D/g, '') : '';
     const cepFormatado = cepLimpo.padStart(8, '0');
@@ -68,35 +112,44 @@ export async function POST(request) {
       unit_amount: Math.round((Number(item.precoPromocional) || Number(item.precoNormal)) * 100),
     }));
 
-    // Montando os dados para enviar ao PagBank Checkout
+    // 🔥 ADICIONA O FRETE COMO ITEM
+    console.log('💰 Valor do frete recebido:', customer.price);
+    console.log('💰 Frete convertido:', precoFrete);
+
+    if (precoFrete > 0) {
+      pagbankItems.push({
+        reference_id: 'frete',
+        name: `Frete - ${customer.bairro || 'Entrega'}`,
+        quantity: 1,
+        unit_amount: Math.round(precoFrete * 100),
+      });
+      console.log('✅ Frete adicionado ao checkout');
+    } else {
+      console.log('ℹ️ Frete não adicionado (valor 0 ou não informado)');
+    }
+
+    // 🔥 DADOS PARA O CHECKOUT
     const dadosCheckout = {
       reference_id: `checkout-${order.id}`,
-      
       customer: {
         name: customer.nome,
         email: customer.email,
         tax_id: cpfLimpo,
       },
-      
       items: pagbankItems,
-      
       payment_methods: [
         { type: "CREDIT_CARD" },
         { type: "BOLETO" },
         { type: "PIX" }
       ],
-      
       redirect_urls: {
         success: `${process.env.NEXT_PUBLIC_APP_URL}/success`,
         failure: `${process.env.NEXT_PUBLIC_APP_URL}/failure`,
         pending: `${process.env.NEXT_PUBLIC_APP_URL}/pending`
       }
-      
-      // tenho q recolocar o  webhook notification_urls e mudar o status de pending para paid quando receber o webhook
-      
     };
 
-    console.log("Enviando para PagBank Checkout:", JSON.stringify(dadosCheckout, null, 2));
+    console.log("📤 Enviando para PagBank Checkout:", JSON.stringify(dadosCheckout, null, 2));
 
     const accessToken = process.env.PAGBANK_SANDBOX_TOKEN;
     if (!accessToken) {
@@ -104,7 +157,7 @@ export async function POST(request) {
     }
 
     const respostaCheckout = await criarCheckout(dadosCheckout, accessToken);
-    console.log(" Resposta Checkout:", JSON.stringify(respostaCheckout, null, 2));
+    console.log("✅ Resposta Checkout:", JSON.stringify(respostaCheckout, null, 2));
 
     let paymentLink = null;
     if (respostaCheckout?.links) {
@@ -117,7 +170,7 @@ export async function POST(request) {
       throw new Error("PagBank não retornou um link de checkout");
     }
 
-    console.log(" Link de checkout:", paymentLink);
+    console.log("🔗 Link de checkout:", paymentLink);
 
     await client.query("COMMIT");
 
@@ -141,7 +194,6 @@ export async function POST(request) {
     if (error.message.includes("401")) {
       statusCode = 401;
       errorMessage = "Erro de autenticação com o PagBank. Verifique o token.";
-      
     } else if (error.message.includes("400")) {
       statusCode = 400;
       errorMessage = `Dados inválidos para o PagBank: ${error.message}`;

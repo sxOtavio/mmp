@@ -13,27 +13,32 @@ export async function GET() {
         o.status,
         o.total,
         o.created_at,
-
-        u.name AS cliente_nome,
-        u.phone,
-        u.address,
-        u.number,
-        u.region,
-        u.city,
-
+        o.shipping_frete,
+        
+        -- 🔥 DADOS DO CLIENTE (SALVOS NO PEDIDO)
+        o.cliente_nome,
+        o.cliente_telefone,
+        o.cliente_cpf,
+        
+        -- 🔥 ENDEREÇO DO PEDIDO
+        o.shipping_street AS endereco,
+        o.shipping_number AS numero,
+        o.shipping_complement AS complemento,
+        o.shipping_district AS bairro,
+        o.shipping_city AS cidade,
+        o.shipping_state AS estado,
+        o.shipping_zip AS cep,
+        o.shipping_bairro,
+        
+        -- 🔥 ITENS
         oi.product_name,
         oi.quantity,
         oi.unit_price
 
       FROM orders o
-
-      INNER JOIN users u
-        ON u.id = o.user_id
-
       INNER JOIN order_items oi
         ON oi.order_id = o.id
-
-      ORDER BY o.created_at ASC
+      ORDER BY o.created_at DESC
     `);
 
     const pedidosMap = {};
@@ -42,19 +47,25 @@ export async function GET() {
       if (!pedidosMap[row.order_id]) {
         pedidosMap[row.order_id] = {
           id: row.order_id,
-          status: row.status,
+          status_pedido: row.status,
           total: Number(row.total),
-          createdAt: row.created_at,
-
-          cliente: {
-            nome: row.cliente_nome,
-            telefone: row.phone,
-            endereco: row.address,
-            numero: row.number,
-            bairro: row.region,
-            cidade: row.city,
-          },
-
+          created_at: row.created_at,
+          shipping_frete: Number(row.shipping_frete) || 0,
+          
+          // 🔥 DADOS DO CLIENTE (DO PEDIDO)
+          cliente_nome: row.cliente_nome || 'Não informado',
+          cliente_telefone: row.cliente_telefone || '',
+          cliente_cpf: row.cliente_cpf || '',
+          
+          // 🔥 ENDEREÇO (DO PEDIDO)
+          cliente_endereco: row.endereco || '',
+          cliente_numero: row.numero || '',
+          cliente_complemento: row.complemento || '',
+          cliente_bairro: row.bairro || '',
+          cliente_cidade: row.cidade || '',
+          cliente_estado: row.estado || 'DF',
+          cliente_cep: row.cep || '',
+          
           itens: [],
         };
       }
@@ -66,13 +77,10 @@ export async function GET() {
       });
     });
 
-    return NextResponse.json(
-      Object.values(pedidosMap)
-    );
+    return NextResponse.json(Object.values(pedidosMap));
 
   } catch (error) {
-    console.error(error);
-
+    console.error("❌ Erro ao buscar pedidos:", error);
     return NextResponse.json(
       { error: "Erro ao buscar pedidos" },
       { status: 500 }

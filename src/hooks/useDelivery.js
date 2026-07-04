@@ -71,7 +71,7 @@ export function useDelivery() {
       setError(null);
 
       const data = await fetchOrders();
-      console.log(" Pedidos recebidos:", data?.length || 0);
+      console.log("HOOK Pedidos recebidos:", data?.length || 0);
       setOrders(data || []);
       calcularStats(data || []);
 

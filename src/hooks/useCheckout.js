@@ -7,7 +7,7 @@ const loadDelivery = async (formData, cart, cartTotal) => {
     console.log("📦 Enviando pedido:", { formData, cart, cartTotal });
 
   
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('@token');
     
     if (!token) {
       throw new Error('Usuário não está logado. Faça login para finalizar o pedido.');
@@ -19,7 +19,7 @@ const loadDelivery = async (formData, cart, cartTotal) => {
     const response = await fetchRegisterOrder({
       customer: formData,
       items: cart,
-      total: cartTotal
+      total: cartTotal,
     }, token); // ← Passa o token como segundo parâmetro
 
     console.log("✅ Resposta COMPLETA da API:");

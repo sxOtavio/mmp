@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useDelivery } from '@/hooks/useDelivery';
 
-//  Mapeamento de status 
+// Mapeamento de status 
 const STATUS_MAP = {
   pending: 'Aguardando',
   preparing: 'Separando',
@@ -89,7 +89,6 @@ export default function DeliveryPage() {
   const [pedidoSelecionado, setPedidoSelecionado] = useState(null);
   const [ordem, setOrdem] = useState('recente');
 
-
   const contarPorStatus = (pedidosList) => {
     const contagem = {
       total: pedidosList.length,
@@ -112,7 +111,6 @@ export default function DeliveryPage() {
 
   const contagens = contarPorStatus(pedidos);
 
- 
   const filtrarPedidos = (pedidosList, filtro) => {
     if (filtro === 'todos') {
       return pedidosList;
@@ -129,16 +127,16 @@ export default function DeliveryPage() {
     if (result) {
       const mensagens = {
         preparing: 'Pedido encaminhado para separação',
-        out_for_delivery: ' Pedido saiu para entrega',
+        out_for_delivery: 'Pedido saiu para entrega',
         delivered: 'Pedido entregue com sucesso!'
       };
       
-      setMensagemNotificacao(mensagens[novoStatus] || ' Status atualizado!');
+      setMensagemNotificacao(mensagens[novoStatus] || 'Status atualizado!');
       setMostrarNotificacao(true);
       setTimeout(() => setMostrarNotificacao(false), 3000);
       setPedidoSelecionado(null);
     } else {
-      setMensagemNotificacao(' Erro ao atualizar status');
+      setMensagemNotificacao('Erro ao atualizar status');
       setMostrarNotificacao(true);
       setTimeout(() => setMostrarNotificacao(false), 3000);
     }
@@ -196,7 +194,7 @@ export default function DeliveryPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center bg-white p-8 rounded-xl shadow-lg max-w-md">
-          <div className="text-6xl mb-4"></div>
+          <div className="text-6xl mb-4">❌</div>
           <h2 className="text-black text-xl font-bold mb-2">Erro ao carregar</h2>
           <p className="text-black">{error}</p>
           <button 
@@ -230,7 +228,7 @@ export default function DeliveryPage() {
         </div>
       )}
 
-      {/* Modal de Detalhes */}
+      {/* Modal de Detalhes - CORRIGIDO */}
       {pedidoSelecionado && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -239,13 +237,29 @@ export default function DeliveryPage() {
               <button onClick={() => setPedidoSelecionado(null)} className="text-2xl text-black hover:text-gray-500">&times;</button>
             </div>
             <div className="p-6 space-y-6">
-              {/* Cliente */}
+              {/* 🔥 CLIENTE - USANDO OS CAMPOS DIRETOS */}
               <div className="p-4 rounded-lg bg-gray-50">
                 <h3 className="font-semibold mb-2 text-lg text-black">👤 Cliente</h3>
-                <p className="text-black"><strong className="text-black">Nome:</strong> {pedidoSelecionado.cliente_nome || pedidoSelecionado.cliente?.nome || 'Não informado'}</p>
-                <p className="text-black"><strong className="text-black">Telefone:</strong> {pedidoSelecionado.cliente_telefone || pedidoSelecionado.cliente?.telefone || 'Não informado'}</p>
-                <p className="text-black"><strong className="text-black">Endereço:</strong> {pedidoSelecionado.cliente_endereco || pedidoSelecionado.cliente?.endereco || 'Não informado'}</p>
-                <p className="text-black"><strong className="text-black">Cidade:</strong> {pedidoSelecionado.cliente_cidade || pedidoSelecionado.cliente?.cidade || 'Não informado'}</p>
+                <p className="text-black">
+                  <strong>Nome:</strong> {pedidoSelecionado.cliente_nome || 'Não informado'}
+                </p>
+                <p className="text-black">
+                  <strong>Telefone:</strong> {pedidoSelecionado.cliente_telefone || 'Não informado'}
+                </p>
+                <p className="text-black">
+                  <strong>Endereço:</strong> {pedidoSelecionado.cliente_endereco || ''} 
+                  {pedidoSelecionado.cliente_numero ? `, ${pedidoSelecionado.cliente_numero}` : ''}
+                  {pedidoSelecionado.cliente_complemento ? ` - ${pedidoSelecionado.cliente_complemento}` : ''}
+                </p>
+                <p className="text-black">
+                  <strong>Bairro:</strong> {pedidoSelecionado.cliente_bairro || 'Não informado'}
+                </p>
+                <p className="text-black">
+                  <strong>Cidade:</strong> {pedidoSelecionado.cliente_cidade || 'Não informado'}
+                </p>
+                <p className="text-black">
+                  <strong>Frete:</strong> R$ {pedidoSelecionado.shipping_frete?.toFixed(2) || '0.00'}
+                </p>
               </div>
 
               {/* Itens */}
@@ -266,18 +280,36 @@ export default function DeliveryPage() {
                     <p className="text-black text-center py-4">Nenhum item encontrado</p>
                   )}
                 </div>
-                <div className="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center">
-                  <span className="font-bold text-lg text-black">Total</span>
-                  <span className="text-2xl font-bold text-emerald-600">R$ {(pedidoSelecionado.total || 0).toFixed(2)}</span>
+                
+                {/* 🔥 SUBTOTAL + FRETE + TOTAL */}
+                <div className="mt-4 pt-3 border-t border-gray-200">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-black">Subtotal</span>
+                    <span className="text-black">R$ {(pedidoSelecionado.total - (pedidoSelecionado.shipping_frete || 0)).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-black">Frete</span>
+                    <span className="text-black">R$ {pedidoSelecionado.shipping_frete?.toFixed(2) || '0.00'}</span>
+                  </div>
+                  <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-300">
+                    <span className="font-bold text-lg text-black">Total</span>
+                    <span className="text-2xl font-bold text-emerald-600">R$ {(pedidoSelecionado.total || 0).toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
 
               {/* Informações adicionais */}
               <div className="p-4 rounded-lg bg-gray-50">
-                <h3 className="font-semibold mb-2 text-black"> Informações</h3>
-                <p className="text-black"><strong className="text-black">Data do pedido:</strong> {pedidoSelecionado.created_at ? new Date(pedidoSelecionado.created_at).toLocaleString() : 'Não disponível'}</p>
-                <p className="text-black"><strong className="text-black">Status:</strong> {getStatusConfig(pedidoSelecionado.status_pedido || pedidoSelecionado.status).label}</p>
-                <p className="text-black"><strong className="text-black">Qtd. itens:</strong> {pedidoSelecionado.itens?.length || 0}</p>
+                <h3 className="font-semibold mb-2 text-black">📋 Informações</h3>
+                <p className="text-black">
+                  <strong>Data do pedido:</strong> {pedidoSelecionado.created_at ? new Date(pedidoSelecionado.created_at).toLocaleString() : 'Não disponível'}
+                </p>
+                <p className="text-black">
+                  <strong>Status:</strong> {getStatusConfig(pedidoSelecionado.status_pedido || pedidoSelecionado.status).label}
+                </p>
+                <p className="text-black">
+                  <strong>Qtd. itens:</strong> {pedidoSelecionado.itens?.length || 0}
+                </p>
               </div>
             </div>
           </div>
@@ -289,16 +321,10 @@ export default function DeliveryPage() {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-black">
-              Painel do Entregador
-            </h1>
-            <p className="mt-1 text-black">
-              Gerencie as entregas do supermercado
-            </p>
+            <h1 className="text-4xl font-bold text-black">Painel do Entregador</h1>
+            <p className="mt-1 text-black">Gerencie as entregas do supermercado</p>
             {pedidos.length > 0 && (
-              <p className="text-sm text-black mt-1">
-                {pedidos.length} pedidos no total
-              </p>
+              <p className="text-sm text-black mt-1">{pedidos.length} pedidos no total</p>
             )}
           </div>
           <div className="flex gap-2">
@@ -311,7 +337,7 @@ export default function DeliveryPage() {
           </div>
         </div>
 
-        {/* Cards de métricas - USANDO OS STATUS EM INGLÊS */}
+        {/* Cards de métricas */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <MetricCard icon="📊" label="Total" value={pedidos.length} cor="gray" />
           <MetricCard icon="⏰" label="Aguardando" value={contagens.pending || 0} cor="amber" />
@@ -320,7 +346,7 @@ export default function DeliveryPage() {
           <MetricCard icon="✅" label="Entregues" value={contagens.delivered || 0} cor="emerald" />
         </div>
 
-        {/* Barra de filtros e ordenação - FILTROS EM INGLÊS */}
+        {/* Barra de filtros e ordenação */}
         <div className="rounded-xl shadow-sm p-4 mb-6 bg-white">
           <div className="flex flex-col md:flex-row gap-4 justify-between">
             <div className="flex gap-2 flex-wrap">
@@ -365,7 +391,7 @@ export default function DeliveryPage() {
           </div>
         </div>
 
-        {/* Lista de Pedidos */}
+        {/* Lista de Pedidos - CORRIGIDA */}
         {pedidosFiltrados.length === 0 ? (
           <div className="text-center py-20 rounded-xl bg-white">
             <div className="text-7xl mb-4">📭</div>
@@ -403,12 +429,12 @@ export default function DeliveryPage() {
                     </div>
                   </div>
 
-                  {/* Body */}
+                  {/* 🔥 BODY - USANDO CAMPOS DIRETOS */}
                   <div className="p-4 space-y-3">
                     <div className="flex items-start gap-2">
                       <div className="flex-1">
-                        <p className="font-semibold text-black">{pedido.cliente_nome || pedido.cliente?.nome || 'Cliente não informado'}</p>
-                        <p className="text-sm text-black opacity-75">{pedido.cliente_telefone || pedido.cliente?.telefone || ''}</p>
+                        <p className="font-semibold text-black">{pedido.cliente_nome || 'Cliente não informado'}</p>
+                        <p className="text-sm text-black opacity-75">{pedido.cliente_telefone || ''}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-black opacity-60">{tempoPedido}</p>
@@ -417,7 +443,10 @@ export default function DeliveryPage() {
 
                     <div className="flex items-start gap-2">
                       <p className="text-sm text-black flex-1">
-                        {pedido.cliente_cidade || pedido.cliente?.cidade || ''} {pedido.cliente_bairro || pedido.cliente?.bairro || ''} {pedido.cliente_endereco || pedido.cliente?.endereco || ''} {pedido.cliente_numero || pedido.cliente?.numero || ''}
+                        {pedido.cliente_cidade || ''} 
+                        {pedido.cliente_bairro ? `, ${pedido.cliente_bairro}` : ''} 
+                        {pedido.cliente_endereco ? `, ${pedido.cliente_endereco}` : ''} 
+                        {pedido.cliente_numero ? `, ${pedido.cliente_numero}` : ''}
                       </p>
                     </div>
 
@@ -442,12 +471,20 @@ export default function DeliveryPage() {
                       </div>
                     </div>
 
+                    {/* 🔥 TOTAL COM FRETE */}
                     <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                      <span className="text-sm text-black opacity-75">Total</span>
+                      <span className="text-sm text-black opacity-75">Total com frete</span>
                       <span className="text-xl font-bold text-emerald-600">
                         R$ {(pedido.total || 0).toFixed(2)}
                       </span>
                     </div>
+
+                    {/* 🔥 MOSTRA O FRETE */}
+                    {pedido.shipping_frete > 0 && (
+                      <div className="flex justify-end items-center text-xs text-black opacity-60">
+                        <span>Frete: R$ {pedido.shipping_frete.toFixed(2)}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Action Button */}
@@ -507,21 +544,12 @@ function MetricCard({ icon, label, value, cor }) {
     red: 'from-red-50 to-red-100'
   };
 
-  const textos = {
-    gray: 'text-black',
-    amber: 'text-black',
-    blue: 'text-black',
-    purple: 'text-black',
-    emerald: 'text-black',
-    red: 'text-black'
-  };
-
   return (
     <div className={`bg-gradient-to-br ${cores[cor]} rounded-xl p-4 shadow-sm transition-all hover:shadow-md`}>
       <div className="flex items-center justify-between">
         <div>
-          <p className={`text-2xl font-bold ${textos[cor]}`}>{value || 0}</p>
-          <p className={`text-xs font-medium ${textos[cor]}`}>{label}</p>
+          <p className={`text-2xl font-bold text-black`}>{value || 0}</p>
+          <p className={`text-xs font-medium text-black`}>{label}</p>
         </div>
         <div className="text-3xl opacity-80">{icon}</div>
       </div>
