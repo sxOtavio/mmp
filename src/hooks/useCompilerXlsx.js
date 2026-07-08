@@ -16,8 +16,53 @@ export function useCompilerXlsx() {
   const [produtosPorCategoria, setProdutosPorCategoria] = useState({});
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  
+  
+  const [statsClassificacao, setStatsClassificacao] = useState({
+    porPeso: 0,
+    porUnidade: 0,
+    naoClassificados: 0
+  });
 
-  // ------------------------------- IMPORTAÇÃO DO ARQUIVO XLSX --------------------------------------------------------------------------
+  // ------------------------------- CLASSIFICAÇÃO POR PESO ------------------------------------
+  const classificarProdutoPorPeso = (nome, categoria) => {
+    const upper = nome.toUpperCase();
+    
+    if (upper.includes(' KG ') || upper.includes(' KG')) {
+      const temNumero = /\d\s*KG/.test(upper);
+      if (!temNumero) {
+        return { 
+          sold_by_weight: true, 
+          unit_type: 'peso', 
+          weight_per_unit: 1.0,
+          classificacao: 'por_peso_kg_sem_numero'
+        };
+      }
+    }
+    
+    if (/\d+\s*KG/.test(upper) || /\d+,\d+\s*KG/.test(upper)) {
+      const pesoMatch = upper.match(/(\d+(?:,\d+)?(?:\.\d+)?)\s*KG/i);
+      let peso = 0.5;
+      if (pesoMatch) {
+        peso = parseFloat(pesoMatch[1].replace(',', '.'));
+      }
+      return { 
+        sold_by_weight: false, 
+        unit_type: 'unidade', 
+        weight_per_unit: peso,
+        classificacao: 'por_unidade_com_numero'
+      };
+    }
+    
+    return { 
+      sold_by_weight: false, 
+      unit_type: 'unidade', 
+      weight_per_unit: 0.5,
+      classificacao: 'por_unidade_padrao'
+    };
+  };
+
+  // ------------------------------- IMPORTAÇÃO DO ARQUIVO XLSX ---------------------------------
   const handleFileChange = (fileObj) => {
     console.log("Arquivos recebidos no hook");
     console.log(
@@ -28,7 +73,7 @@ export function useCompilerXlsx() {
     console.log("Sucesso!! Arquivo pronto para o processamento");
   };
 
-  // ------------------------------- TRATAMENTO DO ARQUIVO XLSX --------------------------------------------------------------------------
+  // ------------------------------- TRATAMENTO DO ARQUIVO XLSX ---------------------------------
   const processFile = useCallback(() => {
     if (!file) return;
 
@@ -104,7 +149,7 @@ export function useCompilerXlsx() {
               headerRowIndex = i;
               precoAnteriorColIndex = j;
               console.log(
-                `✓ Coluna Preço Anterior encontrada: "${cell}" na posição ${j}`,
+                `✓ Coluna Preço Anterior encontrada: "${cell}" na posizione ${j}`,
               );
             }
             if (cellLower.includes("estoque")) {
@@ -159,7 +204,9 @@ export function useCompilerXlsx() {
         let stats = {
           totalProdutos: 0,
           comPromocao: 0,
-          estoquePositivo: 0
+          estoquePositivo: 0,
+          porPeso: 0,
+          porUnidade: 0
         };
 
         for (let i = startRow; i < matrix.length; i++) {
@@ -250,8 +297,7 @@ export function useCompilerXlsx() {
           precoAtual = Number(precoAtualRaw);
           if (isNaN(precoAtual)) precoAtual = 0;
 
-          // ============ LÓGICA CORRIGIDA ============
-          // Verifica se há valor na coluna de promoção
+          // ============ LÓGICA DE PREÇO ============
           let precoPromocaoRaw = "";
 
           if (precoPromocaoColIndex !== -1 && linha[precoPromocaoColIndex] !== undefined) {
@@ -263,7 +309,6 @@ export function useCompilerXlsx() {
           let precoNormal = 0;
           let precoPromocional = null;
 
-          // Verifica se é uma promoção válida
           const isPromocaoValida = precoPromocaoRaw && 
                                     precoPromocaoRaw !== "" && 
                                     precoPromocaoRaw !== "0" &&
@@ -273,22 +318,25 @@ export function useCompilerXlsx() {
                                     Number(precoPromocaoRaw) < precoAnterior;
 
           if (isPromocaoValida) {
-            // PRODUTO EM PROMOÇÃO:
-            // precoNormal = Preço Anterior (preço original)
-            // precoPromocional = Preço Promoção (preço com desconto)
             precoNormal = precoAnterior;
             precoPromocional = Number(precoPromocaoRaw);
             stats.comPromocao++;
             console.log(`🟢 PROMOÇÃO: ${nome.substring(0, 45)}... | Normal: R$ ${precoNormal.toFixed(2)} → Promo: R$ ${precoPromocional.toFixed(2)}`);
           } else {
-            // PRODUTO NORMAL (sem promoção):
-            // precoNormal = Preço Atual
             precoNormal = precoAtual > 0 ? precoAtual : 0;
             precoPromocional = null;
             
             if (precoPromocaoRaw && precoPromocaoRaw !== "" && precoPromocaoRaw !== "0") {
-              console.log(`⚠️ PROMOÇÃO INVÁLIDA (valor não é menor que anterior): ${nome.substring(0, 45)}... | Promo: R$ ${precoPromocaoRaw} | Anterior: R$ ${precoAnterior}`);
+              console.log(`⚠️ PROMOÇÃO INVÁLIDA: ${nome.substring(0, 45)}... | Promo: R$ ${precoPromocaoRaw} | Anterior: R$ ${precoAnterior}`);
             }
+          }
+
+         const classificacao = classificarProdutoPorPeso(nome, currentCategory);
+          
+          if (classificacao.sold_by_weight) {
+            stats.porPeso++;
+          } else {
+            stats.porUnidade++;
           }
 
           stats.totalProdutos++;
@@ -303,6 +351,10 @@ export function useCompilerXlsx() {
             estoque: estoque,
             categoria: currentCategory,
             category: currentCategory,
+            sold_by_weight: classificacao.sold_by_weight,
+            unit_type: classificacao.unit_type,
+            weight_per_unit: classificacao.weight_per_unit,
+            _classificacao: classificacao.classificacao // Para debug
           };
 
           produtosTratados.push(produto);
@@ -315,9 +367,15 @@ export function useCompilerXlsx() {
 
         setProdutosJSON(produtosTratados);
         setProdutosPorCategoria(categoriasProdutos);
+        setStatsClassificacao({
+          porPeso: stats.porPeso,
+          porUnidade: stats.porUnidade,
+          naoClassificados: 0
+        });
+        
         window.produtosPlanilhaDebug = produtosTratados;
 
-        // RELATÓRIO FINAL
+        //RELATÓRIO FINAL
         console.log("=========================================");
         console.log("📊 RELATÓRIO DE PROCESSAMENTO");
         console.log("=========================================");
@@ -325,10 +383,23 @@ export function useCompilerXlsx() {
         console.log(`📦 Produtos com estoque positivo: ${stats.estoquePositivo}`);
         console.log(`🏷️  Produtos em PROMOÇÃO: ${stats.comPromocao}`);
         console.log(`📂 Categorias encontradas: ${Object.keys(categoriasProdutos).length}`);
+        console.log(`\n⚖️ CLASSIFICAÇÃO POR PESO:`);
+        console.log(`   🟢 Por Peso: ${stats.porPeso} produtos`);
+        console.log(`   🔵 Por Unidade: ${stats.porUnidade} produtos`);
+        
+        // MOSTRA EXEMPLOS DE PRODUTOS POR PESO
+        const exemplosPeso = produtosTratados.filter(p => p.sold_by_weight).slice(0, 10);
+        if (exemplosPeso.length > 0) {
+          console.log("\n🟢 Exemplos de produtos vendidos por PESO:");
+          exemplosPeso.forEach((p) => {
+            console.log(`  - ${p.nome.substring(0, 50)} (${p._classificacao})`);
+          });
+        }
         
         Object.entries(categoriasProdutos).forEach(([cat, prods]) => {
           const promoCount = prods.filter((p) => p.precoPromocional).length;
-          console.log(`   - ${cat}: ${prods.length} produtos (${promoCount} com promoção)`);
+          const pesoCount = prods.filter((p) => p.sold_by_weight).length;
+          console.log(`   - ${cat}: ${prods.length} produtos (${promoCount} promoções, ${pesoCount} por peso)`);
         });
         
         const exemplosPromocao = produtosTratados.filter((p) => p.precoPromocional).slice(0, 10);
@@ -349,17 +420,20 @@ export function useCompilerXlsx() {
     reader.readAsBinaryString(file);
   }, [file]);
 
-  // ------------------------------- IMPORTAÇÃO PARA O BANCO DE DADOS ----------------------------------------------------
+  // ------------------------------- IMPORTAÇÃO PARA O BANCO DE DADOS ---------------------------------
   const importProductsData = useCallback(async () => {
     if (produtosJSON.length === 0) {
-      alert(" Aguarde o processamento da planilha ou selecione um arquivo válido!");
+      alert("⏳ Aguarde o processamento da planilha ou selecione um arquivo válido!");
       return;
     }
 
     const promocoesCount = produtosJSON.filter(p => p.precoPromocional).length;
+    const pesoCount = produtosJSON.filter(p => p.sold_by_weight).length;
     
-    console.log(`Iniciando importação de ${produtosJSON.length} produtos...`);
-    console.log(`Produtos em promoção: ${promocoesCount}`);
+    console.log(`📦 Iniciando importação de ${produtosJSON.length} produtos...`);
+    console.log(`🏷️ Produtos em promoção: ${promocoesCount}`);
+    console.log(`⚖️ Produtos por peso: ${pesoCount}`);
+    console.log(`📦 Produtos por unidade: ${produtosJSON.length - pesoCount}`);
 
     try {
       setLoading(true);
@@ -367,13 +441,14 @@ export function useCompilerXlsx() {
 
       for (let i = 0; i < produtosJSON.length; i += TAMANHO_LOTE) {
         const lote = produtosJSON.slice(i, i + TAMANHO_LOTE);
-        console.log(` Enviando lote ${Math.floor(i / TAMANHO_LOTE) + 1}/${Math.ceil(produtosJSON.length / TAMANHO_LOTE)} (${lote.length} produtos)...`);
-        console.log(` Promoções neste lote: ${lote.filter((p) => p.precoPromocional).length}`);
+        console.log(`📤 Enviando lote ${Math.floor(i / TAMANHO_LOTE) + 1}/${Math.ceil(produtosJSON.length / TAMANHO_LOTE)} (${lote.length} produtos)...`);
+        console.log(`   Promoções: ${lote.filter((p) => p.precoPromocional).length}`);
+        console.log(`   Por peso: ${lote.filter((p) => p.sold_by_weight).length}`);
 
         await fetchPostXlsxFile(lote);
       }
 
-      alert(`🎉 ${produtosJSON.length} produtos importados! (${promocoesCount} em promoção)`);
+      alert(`🎉 ${produtosJSON.length} produtos importados!\n📦 ${produtosJSON.length - pesoCount} por unidade\n⚖️ ${pesoCount} por peso\n🏷️ ${promocoesCount} em promoção`);
       console.log("✅ Importação finalizada!");
     } catch (error) {
       console.error("❌ Erro ao importar produtos:", error);
@@ -395,5 +470,6 @@ export function useCompilerXlsx() {
     produtosPorCategoria,
     importProductsData,
     handleFileChange,
+    statsClassificacao, 
   };
 }

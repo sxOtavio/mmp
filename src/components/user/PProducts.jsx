@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useUser } from '@/contexts/UserContext';
 
-
 export default function Products() {
   const { products, loading, loadProductsData } = useProducts();
   const { addToCart } = useUser();
@@ -13,8 +12,47 @@ export default function Products() {
     loadProductsData();
   }, [loadProductsData]);
 
-  // Função para adicionar ao carrinho
+  
   const handleAddToCart = (product) => {
+    const isSoldByWeight = product.sold_by_weight === true;
+    
+    let quantity = 1;
+    let pesoEspecifico = null;
+    
+    if (isSoldByWeight) {
+      const pesoDesejado = prompt(
+        `${product.name}\n\nDigite o peso desejado (em kg):`,
+        '0.5'
+      );
+      
+      if (pesoDesejado === null) return;
+      
+      const peso = parseFloat(pesoDesejado);
+      if (isNaN(peso) || peso <= 0) {
+        alert('⚠️ Peso inválido!');
+        return;
+      }
+      
+  
+      quantity = peso;
+      pesoEspecifico = peso;
+    } else {
+      const qtdDesejada = prompt(
+        `📦 ${product.name}\n\nDigite a quantidade desejada:`,
+        '1'
+      );
+      
+      if (qtdDesejada === null) return;
+      
+      const qtd = parseInt(qtdDesejada);
+      if (isNaN(qtd) || qtd <= 0) {
+        alert('⚠️ Quantidade inválida!');
+        return;
+      }
+      
+      quantity = qtd;
+    }
+    
     const produtoParaCarrinho = {
       gtin: product.gtin_code || product.id,
       nome: product.name,
@@ -22,18 +60,20 @@ export default function Products() {
       precoPromocional: product.promotion_price || null,
       estoque: product.stock || 999,
       categoria: product.category || "Promoção",
+      sold_by_weight: isSoldByWeight,
+      unit_type: product.unit_type || 'unidade',
+      weight_per_unit: product.weight_per_unit || 0.5,
+      peso_especifico: pesoEspecifico,
     };
     
-    addToCart(produtoParaCarrinho, 1);
+    addToCart(produtoParaCarrinho, quantity);
     
-    // Feedback visual no botão
     const btn = document.activeElement;
     if (btn) {
-      const originalText = btn.innerHTML;
-      btn.innerHTML = "✓ Adicionado!";
+      btn.innerHTML = isSoldByWeight ? `✓ ${quantity}kg` : "✓ Adicionado!";
       setTimeout(() => {
-        btn.innerHTML = originalText;
-      }, 1000);
+        btn.innerHTML = "🛒 Carrinho";
+      }, 1500);
     }
   };
 
@@ -45,7 +85,6 @@ export default function Products() {
     );
   }
 
-  // PEGA SOMENTE PRODUTOS PROMOCIONAIS
   const produtosPromocionais = products
     .filter(
       (p) =>
@@ -54,7 +93,6 @@ export default function Products() {
     )
     .slice(0, 30);
 
-  // fallback caso não tenha promoções
   const produtosCarrossel =
     produtosPromocionais.length > 0
       ? produtosPromocionais
@@ -66,11 +104,13 @@ export default function Products() {
   const linha2 = produtosCarrossel.slice(metade);
 
   const priceCorrection = (p) => {
+    const tipo = p.sold_by_weight ? '/kg' : '/un';
+    
     if (p.promotion_price == null || p.promotion_price == 0) {
       return (
         <p className="text-black font-bold text-sm">
-          <br />
           R$ {Number(p.price).toFixed(2)}
+          <span className="text-xs text-gray-400 font-normal ml-1">{tipo}</span>
         </p>
       );
     }
@@ -81,9 +121,9 @@ export default function Products() {
           <p className="line-through text-gray-400 text-[10px]">
             R$ {Number(p.price).toFixed(2)}
           </p>
-
           <p className="text-red-600 font-bold text-sm">
             R$ {Number(p.promotion_price).toFixed(2)}
+            <span className="text-xs text-gray-400 font-normal ml-1">{tipo}</span>
           </p>
         </>
       );
@@ -92,6 +132,7 @@ export default function Products() {
     return (
       <p className="font-bold text-sm">
         R$ {Number(p.price).toFixed(2)}
+        <span className="text-xs text-gray-400 font-normal ml-1">{tipo}</span>
       </p>
     );
   };
@@ -100,7 +141,6 @@ export default function Products() {
     listaProdutos,
     tempoSegundos
   ) => {
-    // DUPLICA APENAS UMA VEZ
     const listaMultiplicada = [
       ...listaProdutos,
       ...listaProdutos,
@@ -134,8 +174,20 @@ export default function Products() {
                 duration-300
                 hover:-translate-y-1
                 hover:shadow-lg
+                relative
               "
             >
+              {/* BADGE DE CLASSIFICAÇÃO */}
+              <div className="absolute top-2 right-2 z-10">
+                <span className={`text-[8px] px-2 py-1 rounded-full font-medium ${
+                  p.sold_by_weight 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-blue-500 text-white'
+                }`}>
+                  {p.sold_by_weight ? 'Peso' : 'Unidade'}
+                </span>
+              </div>
+
               <div className="bg-gray-100 h-40 rounded mb-2 overflow-hidden flex items-center justify-center text-[10px] text-black">
                 {p.image_url ? (
                   <img
@@ -156,6 +208,12 @@ export default function Products() {
                 {p.name}
               </h3>
 
+              {p.sold_by_weight && (
+                <p className="text-[8px] text-gray-500">
+                   Vendido por peso
+                </p>
+              )}
+
               {priceCorrection(p)}
 
               <button
@@ -175,7 +233,7 @@ export default function Products() {
                   active:scale-95
                 "
               >
-                🛒 Carrinho
+                {p.sold_by_weight ? ' Peso' : ' Carrinho'}
               </button>
             </div>
           ))}
@@ -191,7 +249,6 @@ export default function Products() {
           from {
             transform: translate3d(0, 0, 0);
           }
-
           to {
             transform: translate3d(-50%, 0, 0);
           }

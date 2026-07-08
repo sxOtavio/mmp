@@ -228,7 +228,7 @@ export default function DeliveryPage() {
         </div>
       )}
 
-      {/* Modal de Detalhes - CORRIGIDO */}
+      {/* Modal de Detalhes  */}
       {pedidoSelecionado && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -237,7 +237,7 @@ export default function DeliveryPage() {
               <button onClick={() => setPedidoSelecionado(null)} className="text-2xl text-black hover:text-gray-500">&times;</button>
             </div>
             <div className="p-6 space-y-6">
-              {/* 🔥 CLIENTE - USANDO OS CAMPOS DIRETOS */}
+              {/*  CLIENTE  */}
               <div className="p-4 rounded-lg bg-gray-50">
                 <h3 className="font-semibold mb-2 text-lg text-black">👤 Cliente</h3>
                 <p className="text-black">
@@ -281,7 +281,7 @@ export default function DeliveryPage() {
                   )}
                 </div>
                 
-                {/* 🔥 SUBTOTAL + FRETE + TOTAL */}
+                {/* SUBTOTAL + FRETE + TOTAL */}
                 <div className="mt-4 pt-3 border-t border-gray-200">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-black">Subtotal</span>
@@ -391,7 +391,7 @@ export default function DeliveryPage() {
           </div>
         </div>
 
-        {/* Lista de Pedidos - CORRIGIDA */}
+        {/* Lista de Pedidos  */}
         {pedidosFiltrados.length === 0 ? (
           <div className="text-center py-20 rounded-xl bg-white">
             <div className="text-7xl mb-4">📭</div>
@@ -429,7 +429,7 @@ export default function DeliveryPage() {
                     </div>
                   </div>
 
-                  {/* 🔥 BODY - USANDO CAMPOS DIRETOS */}
+                  {/* BODY   */}
                   <div className="p-4 space-y-3">
                     <div className="flex items-start gap-2">
                       <div className="flex-1">
@@ -471,7 +471,7 @@ export default function DeliveryPage() {
                       </div>
                     </div>
 
-                    {/* 🔥 TOTAL COM FRETE */}
+                    {/* TOTAL COM FRETE */}
                     <div className="flex justify-between items-center pt-2 border-t border-gray-200">
                       <span className="text-sm text-black opacity-75">Total com frete</span>
                       <span className="text-xl font-bold text-emerald-600">

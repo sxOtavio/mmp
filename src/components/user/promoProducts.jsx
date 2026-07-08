@@ -1,4 +1,4 @@
-
+"use client";
 import { useEffect, useState, useRef } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useUser } from '@/contexts/UserContext';
@@ -10,35 +10,30 @@ function hideCard(price, promotion_price) {
   return "";
 }
 
-export default function Products() {
+export default function PromoProducts() {
   const { promoProducts, loading, loadPromoProductsData } = useProducts();
+  const { addToCart } = useUser(); 
   const [currentPage, setCurrentPage] = useState(0);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
   const carouselRef = useRef(null);
-  const { addToCart } = useUser();
 
   useEffect(() => {
     loadPromoProductsData();
   }, [loadPromoProductsData]);
 
-  // Configuração: 3 linhas com 4 colunas = 12 produtos por página
-  const ITEMS_PER_PAGE = 12; // 3 linhas x 4 colunas
-  const totalPages = Math.ceil((promoProducts?.length || 0) / ITEMS_PER_PAGE)-1;
+  const ITEMS_PER_PAGE = 12;
+  const totalPages = Math.ceil((promoProducts?.length || 0) / ITEMS_PER_PAGE) - 1;
 
-
-  // Filtra produtos válidos (com promoção menor que o preço normal)
   const validProducts = promoProducts?.filter(
     (p) => p.promotion_price && p.promotion_price < p.price
   ) || [];
 
-  // Produtos da página atual
   const currentProducts = validProducts.slice(
     currentPage * ITEMS_PER_PAGE,
     (currentPage + 1) * ITEMS_PER_PAGE
   );
 
-  // Navegação
   const nextPage = () => {
     if (currentPage < totalPages - 1) {
       setCurrentPage(currentPage + 1);
@@ -51,7 +46,6 @@ export default function Products() {
     }
   };
 
-  // Touch/swipe para mobile
   const handleTouchStart = (e) => {
     setTouchStart(e.targetTouches[0].clientX);
   };
@@ -62,30 +56,77 @@ export default function Products() {
 
   const handleTouchEnd = () => {
     if (touchStart - touchEnd > 75) {
-      // Swipe esquerda -> próximo
       nextPage();
     }
     if (touchStart - touchEnd < -75) {
-      // Swipe direita -> anterior
       prevPage();
     }
   };
-  // Função para adicionar ao carrinho
+
+  
   const handleAddToCart = (product) => {
-  const produtoParaCarrinho = {
-    gtin: product.gtin_code || product.id,
-    nome: product.name,
-    precoNormal: product.price,
-    precoPromocional: product.promotion_price || null,
-    estoque: product.stock || 999,
-    categoria: product.category || "Produto",
+    const isSoldByWeight = product.sold_by_weight === true;
+    
+    let quantity = 1;
+    let pesoEspecifico = null;
+    
+    if (isSoldByWeight) {
+      const pesoDesejado = prompt(
+        ` ${product.name}\n\nDigite o peso desejado (em kg):`,
+        '0.5'
+      );
+      
+      if (pesoDesejado === null) return;
+      
+      const peso = parseFloat(pesoDesejado);
+      if (isNaN(peso) || peso <= 0) {
+        alert('⚠️ Peso inválido!');
+        return;
+      }
+      
+     
+      quantity = peso;
+      pesoEspecifico = peso;
+    } else {
+      const qtdDesejada = prompt(
+        ` ${product.name}\n\nDigite a quantidade desejada:`,
+        '1'
+      );
+      
+      if (qtdDesejada === null) return;
+      
+      const qtd = parseInt(qtdDesejada);
+      if (isNaN(qtd) || qtd <= 0) {
+        alert('⚠️ Quantidade inválida!');
+        return;
+      }
+      
+      quantity = qtd;
+    }
+    
+    const produtoParaCarrinho = {
+      gtin: product.gtin_code || product.id,
+      nome: product.name,
+      precoNormal: product.price,
+      precoPromocional: product.promotion_price,
+      estoque: product.stock || 999,
+      categoria: product.category || "Promoção",
+      sold_by_weight: isSoldByWeight,
+      unit_type: product.unit_type || 'unidade',
+      weight_per_unit: product.weight_per_unit || 0.5,
+      peso_especifico: pesoEspecifico,
+    };
+    
+    addToCart(produtoParaCarrinho, quantity);
+    
+    const btn = document.activeElement;
+    if (btn) {
+      btn.innerHTML = isSoldByWeight ? `✓ ${quantity}kg` : "✓ Adicionado!";
+      setTimeout(() => {
+        btn.innerHTML = "🛒 Carrinho";
+      }, 1500);
+    }
   };
-  
-  addToCart(produtoParaCarrinho, 1);
-  
-  // Feedback visual opcional
-  console.log(`✅ ${product.name} adicionado ao carrinho!`);
-};
 
   if (loading) {
     return (
@@ -113,15 +154,13 @@ export default function Products() {
           Preços promocionais atualizados, fique por dentro!
         </h2>
         
-        {/* Indicador de páginas */}
         {totalPages > 1 && (
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-black">
             Página {currentPage + 1} de {totalPages}
           </span>
         )}
       </div>
 
-      {/* Carrossel com swipe support */}
       <div 
         ref={carouselRef}
         className="relative"
@@ -129,7 +168,6 @@ export default function Products() {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Botão anterior - desktop */}
         {totalPages > 1 && (
           <button
             onClick={prevPage}
@@ -138,21 +176,30 @@ export default function Products() {
               currentPage === 0 ? "opacity-0 pointer-events-none" : ""
             }`}
           >
-            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
         )}
 
-        {/* Grid de produtos - 3 linhas x 4 colunas */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {currentProducts.map((p, index) => (
             <div
               key={`${p.gtin_code || p.id || index}`}
-              className={`bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow ${hideCard(p.price, p.promotion_price)}`}
+              className={`bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow relative ${hideCard(p.price, p.promotion_price)}`}
             >
-              {/* Imagem */}
-              <div className="bg-gray-100 h-65 rounded mb-2 overflow-hidden flex items-center justify-center text-[10px] text-gray-400">
+              {/* BADGE DE CLASSIFICAÇÃO */}
+              <div className="absolute top-2 right-2 z-10">
+                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                  p.sold_by_weight 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-blue-500 text-white'
+                }`}>
+                  {p.sold_by_weight ? ' Peso' : ' Unidade'}
+                </span>
+              </div>
+
+              <div className="bg-gray-100 h-40 rounded mb-2 overflow-hidden flex items-center justify-center text-[10px] text-gray-400">
                 {p.image_url ? (
                   <img src={p.image_url} alt={p.name} className="w-full h-full object-contain" />
                 ) : (
@@ -162,29 +209,33 @@ export default function Products() {
                 )}
               </div>
 
-              {/* Nome do produto - com limite de linhas */}
-              <h3 className="font-bold text-sm text-black line-clamp-2 min-h-[40px]">
+              <h3 className="font-bold text-sm line-clamp-2 min-h-[40px]">
                 {p.name}
               </h3>
 
-              {/* Preço antigo */}
+              {p.sold_by_weight && (
+                <p className="text-xs text-gray-500 mt-1">
+                   Vendido por peso
+                </p>
+              )}
+
               <p className="line-through text-gray-400 text-sm mt-1">
                 R$ {Number(p.price).toFixed(2)}
               </p>
 
-              {/* Preço promocional */}
               <p className="text-red-600 font-bold text-lg">
                 R$ {Number(p.promotion_price).toFixed(2)}
+                <span className="text-xs text-gray-400 font-normal ml-1">
+                  {p.sold_by_weight ? '/kg' : '/un'}
+                </span>
               </p>
 
-              {/* Desconto percentual opcional */}
               {p.price && p.promotion_price && (
                 <p className="text-green-600 text-xs font-semibold">
                   {Math.round(((p.price - p.promotion_price) / p.price) * 100)}% OFF
                 </p>
               )}
 
-              {/* Botão de compra */}
               <button
                 onClick={() => handleAddToCart(p)}
                 className="
@@ -202,13 +253,12 @@ export default function Products() {
                   active:scale-95
                 "
               >
-                🛒 Carrinho
+                {p.sold_by_weight ? ' Selecionar Peso' : '🛒 Carrinho'}
               </button>
             </div>
           ))}
         </div>
 
-        {/* Botão próximo - desktop */}
         {totalPages > 1 && (
           <button
             onClick={nextPage}
@@ -224,7 +274,6 @@ export default function Products() {
         )}
       </div>
 
-      {/* Indicadores de página (dots) - mobile/desktop */}
       {totalPages > 1 && (
         <div className="flex justify-center gap-2 mt-6">
           {Array.from({ length: totalPages }).map((_, idx) => (
@@ -241,7 +290,6 @@ export default function Products() {
         </div>
       )}
 
-      {/* Navegação mobile com botões (opcional) */}
       {totalPages > 1 && (
         <div className="flex justify-between gap-4 mt-4 md:hidden">
           <button

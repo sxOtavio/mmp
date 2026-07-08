@@ -13,7 +13,7 @@ export default function Panel() {
   const [filterName, setFilterName] = useState("");
   const [filterGtin, setFilterGtin] = useState("");
   const [selectedFiles, setSelectedFiles] = useState({});
-   const { validateToken, checkTokenAndRedirect, isTokenExpiringSoon } = useUser();
+  const { validateToken, checkTokenAndRedirect, isTokenExpiringSoon } = useUser();
   
 
   const ITEMS_PER_PAGE = 15;
@@ -50,9 +50,7 @@ export default function Panel() {
     setFilterGtin("");
     setCurrentPage(1);
   };
-// ============== TOKEN
 
-  
   // Verificar token manualmente
   const handleCheckToken = async () => {
     const result = await validateToken();
@@ -63,18 +61,16 @@ export default function Panel() {
     }
   };
   
-  // Verificar e redirecionar se inválido
   useEffect(() => {
     checkTokenAndRedirect('/loginPage');
   }, []);
   
-  // Mostrar aviso se token está perto de expirar
   useEffect(() => {
     if (isTokenExpiringSoon()) {
       console.log("⚠️ Seu token vai expirar em breve!");
-      // Mostrar um toast/notificação
     }
   }, [isTokenExpiringSoon]);
+
   return (
     <div className="bg-yellow-400 rounded-2xl w-full p-6 shadow-xl">
       <h3 className="text-2xl font-bold text-black mb-6">
@@ -158,19 +154,19 @@ export default function Panel() {
           </div>
         )}
 
-        {/* Header */}
-        <div className="grid grid-cols-11 gap-4 bg-yellow-500 text-black font-bold text-sm p-4">
+        {/* Header - COM COLUNA DE CLASSIFICAÇÃO */}
+        <div className="grid grid-cols-12 gap-4 bg-yellow-500 text-black font-bold text-sm p-4">
           <p>Selecionar</p>
           <p>GTIN</p>
           <p>Nome</p>
-          <p>Marca</p>
+          <p>Tipo</p> 
           <p>Preço</p>
           <p>Promoção</p>
           <p>Ativo</p>
           <p>Foto</p>
-          <p>Imagem salva</p>
+          <p>Imagem</p>
           <p>Criado</p>
-          <p>Ações</p>
+          <p className="col-span-2">Ações</p>
         </div>
 
         {/* Produtos */}
@@ -178,7 +174,7 @@ export default function Panel() {
           {currentProducts.map((p, id) => (
             <div
               key={id}
-              className="grid grid-cols-11 gap-4 items-center p-4 hover:bg-gray-50 transition"
+              className="grid grid-cols-12 gap-4 items-center p-4 hover:bg-gray-50 transition"
             >
               <input type="checkbox" />
 
@@ -188,7 +184,18 @@ export default function Panel() {
                 {p.name}
               </p>
 
-              <p className="text-sm text-black truncate">{p.brand}</p>
+              
+              <p className="text-sm">
+                {p.sold_by_weight ? (
+                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                     Peso
+                  </span>
+                ) : (
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                     Unidade
+                  </span>
+                )}
+              </p>
 
               <p className="font-semibold text-black text-sm">
                 R$ {Number(p.price).toFixed(2)}
@@ -198,13 +205,7 @@ export default function Panel() {
                 {p.promotion_price ? `R$ ${Number(p.promotion_price).toFixed(2)}` : "-"}
               </p>
 
-              <p
-                className={`text-sm font-bold  ${
-                  p.active
-                    ? "text-green-600"
-                    : "text-red-500"
-                }`}
-              >
+              <p className={`text-sm font-bold ${p.active ? "text-green-600" : "text-red-500"}`}>
                 {p.active ? "Sim" : "Não"}
               </p>
 
@@ -220,12 +221,12 @@ export default function Panel() {
                 )}
               </div>
 
-              <p className="text-xs text-black text-black truncate">
+              <p className="text-xs text-black truncate">
                 {p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "-"}
               </p>
 
-              {/* Botões */}
-              <div className="flex flex-col gap-2">
+              
+              <div className="flex flex-col gap-2 col-span-2">
                 <input
                   type="file"
                   name="image"
@@ -236,25 +237,21 @@ export default function Panel() {
                     setSelectedFiles((prev) => ({
                       ...prev,
                       [p.gtin_code]: e.target.files[0],
-                      
                     }));
                   }}
                 />
 
                 <label
                   htmlFor={`image-${id}`}
-                  className=" bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-1 px-2 rounded-lg transition cursor-pointer text-center text-xs"
+                  className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-1 px-2 rounded-lg transition cursor-pointer text-center text-xs"
                 >
                   Selecionar
                 </label>
-{// aqui que eu devo chamar a funcao pra atualizar as fotos
-}
-                <button onClick={()=> {setProductsPhotos(selectedFiles[p.gtin_code], p.gtin_code)}} className=" bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2 rounded-lg transition text-xs">
+
+                <button onClick={()=> {setProductsPhotos(selectedFiles[p.gtin_code], p.gtin_code)}} className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2 rounded-lg transition text-xs">
                   Enviar
                 </button>
-{
- //lebrar de colocar uma fução pra atualizar os parametros inclusive a foto 
-}
+
                 <button className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded-lg transition text-xs">
                   Editar
                 </button>
@@ -271,9 +268,7 @@ export default function Panel() {
         <div className="flex justify-center items-center gap-4 p-6 bg-gray-50 rounded-b-lg">
           <button
             disabled={currentPage === 1}
-            onClick={() =>
-              setCurrentPage((prev) => prev - 1)
-            }
+            onClick={() => setCurrentPage((prev) => prev - 1)}
             className="bg-yellow-400 text-black hover:bg-yellow-500 px-5 py-2 rounded-lg font-bold disabled:opacity-50"
           >
             Anterior
@@ -285,9 +280,7 @@ export default function Panel() {
 
           <button
             disabled={currentPage === totalPages || totalPages === 0}
-            onClick={() =>
-              setCurrentPage((prev) => prev + 1)
-            }
+            onClick={() => setCurrentPage((prev) => prev + 1)}
             className="bg-yellow-400 text-black hover:bg-yellow-500 px-5 py-2 rounded-lg font-bold disabled:opacity-50"
           >
             Próxima

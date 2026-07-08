@@ -3,6 +3,41 @@ import { pool } from "../../../lib/db";
 import jwt from "jsonwebtoken";
 import { criarCheckout } from "@/lib/pagBank";
 
+
+const processarItensParaPagBank = (items) => {
+  const pagbankItems = [];
+
+  for (const item of items) {
+    const isSoldByWeight = item.sold_by_weight === true;
+    const precoUnitario = Number(item.precoPromocional) || Number(item.precoNormal) || 0;
+    const quantidade = Number(item.quantity || 1);
+    const pesoEspecifico = Number(item.peso_especifico || 0);
+
+    if (isSoldByWeight && pesoEspecifico > 0) {
+      const valorTotal = precoUnitario * pesoEspecifico;
+      pagbankItems.push({
+        reference_id: String(item.gtin),
+        name: `${item.nome} (${pesoEspecifico.toFixed(2)}kg)`,
+        quantity: 1,
+        unit_amount: Math.round(valorTotal * 100),
+      });
+      console.log(`✅ Item por peso: ${item.nome} - ${pesoEspecifico.toFixed(2)}kg = R$ ${valorTotal.toFixed(2)}`);
+    } else {
+      const valorUnitario = precoUnitario;
+      const qtdInteira = Math.round(quantidade);
+      pagbankItems.push({
+        reference_id: String(item.gtin),
+        name: item.nome,
+        quantity: qtdInteira,
+        unit_amount: Math.round(valorUnitario * 100),
+      });
+      console.log(`✅ Item por unidade: ${item.nome} x${qtdInteira} = R$ ${(valorUnitario * qtdInteira).toFixed(2)}`);
+    }
+  }
+
+  return pagbankItems;
+};
+
 export async function POST(request) {
   let client;
 
@@ -36,15 +71,9 @@ export async function POST(request) {
 
     await client.query("BEGIN");
 
-    // 🔥 CALCULA O TOTAL COM FRETE
     const precoFrete = Number(customer.price) || Number(customer.preco_frete) || 0;
     const totalComFrete = Number(total) + precoFrete;
 
-    console.log('💰 Total do carrinho:', total);
-    console.log('💰 Frete:', precoFrete);
-    console.log('💰 Total com frete:', totalComFrete);
-
-    // 🔥 SALVA O PEDIDO
     const orderResult = await client.query(
       `
       INSERT INTO orders (
@@ -88,7 +117,6 @@ export async function POST(request) {
 
     const order = orderResult.rows[0];
 
-    // 🔥 SALVA OS ITENS
     for (const item of items) {
       const unitPrice = Number(item.precoPromocional) || Number(item.precoNormal);
       await client.query(
@@ -100,21 +128,39 @@ export async function POST(request) {
       );
     }
 
-    // 🔥 PREPARA DADOS PARA O PAGBANK
-    const cpfLimpo = user.cpf ? user.cpf.replace(/\D/g, '') : '';
-    const cepLimpo = customer.cep ? customer.cep.replace(/\D/g, '') : '';
-    const cepFormatado = cepLimpo.padStart(8, '0');
+   
+    const cpfLimpo = user.cpf ? user.cpf.replace(/\D/g, '') : customer.cpf ? customer.cpf.replace(/\D/g, '') : '';
+    
+    console.log('🔍 CPF:', {
+      banco: user.cpf,
+      form: customer.cpf,
+      limpo: cpfLimpo,
+      tamanho: cpfLimpo.length
+    });
 
-    const pagbankItems = items.map((item) => ({
-      reference_id: String(item.gtin),
-      name: item.nome,
-      quantity: Number(item.quantity),
-      unit_amount: Math.round((Number(item.precoPromocional) || Number(item.precoNormal)) * 100),
-    }));
+    let cpfFinal = cpfLimpo;
+    if (cpfLimpo.length !== 11) {
+      const isSandbox = process.env.PAGBANK_SANDBOX === 'true';
+      if (isSandbox) {
+        console.log('⚠️ Sandbox: usando CPF de teste');
+        cpfFinal = '12345678909';
+      } else {
+        await client.query("ROLLBACK");
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'CPF inválido. Por favor, atualize seus dados.' 
+          },
+          { status: 400 }
+        );
+      }
+    }
 
-    // 🔥 ADICIONA O FRETE COMO ITEM
-    console.log('💰 Valor do frete recebido:', customer.price);
-    console.log('💰 Frete convertido:', precoFrete);
+
+    const pagbankItems = processarItensParaPagBank(items);
+
+    // ADICIONA O FRETE
+    console.log('Valor do frete recebido:', customer.price);
 
     if (precoFrete > 0) {
       pagbankItems.push({
@@ -128,13 +174,13 @@ export async function POST(request) {
       console.log('ℹ️ Frete não adicionado (valor 0 ou não informado)');
     }
 
-    // 🔥 DADOS PARA O CHECKOUT
+
     const dadosCheckout = {
       reference_id: `checkout-${order.id}`,
       customer: {
         name: customer.nome,
         email: customer.email,
-        tax_id: cpfLimpo,
+        tax_id: cpfFinal,
       },
       items: pagbankItems,
       payment_methods: [
@@ -149,7 +195,7 @@ export async function POST(request) {
       }
     };
 
-    console.log("📤 Enviando para PagBank Checkout:", JSON.stringify(dadosCheckout, null, 2));
+    console.log(" Enviando para PagBank Checkout:", JSON.stringify(dadosCheckout, null, 2));
 
     const accessToken = process.env.PAGBANK_SANDBOX_TOKEN;
     if (!accessToken) {

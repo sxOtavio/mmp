@@ -15,12 +15,12 @@ export async function GET() {
         o.created_at,
         o.shipping_frete,
         
-        -- 🔥 DADOS DO CLIENTE (SALVOS NO PEDIDO)
+        --  DADOS DO CLIENTE (SALVOS NO PEDIDO)
         o.cliente_nome,
         o.cliente_telefone,
         o.cliente_cpf,
         
-        -- 🔥 ENDEREÇO DO PEDIDO
+        --  ENDEREÇO DO PEDIDO
         o.shipping_street AS endereco,
         o.shipping_number AS numero,
         o.shipping_complement AS complemento,
@@ -30,7 +30,7 @@ export async function GET() {
         o.shipping_zip AS cep,
         o.shipping_bairro,
         
-        -- 🔥 ITENS
+        --  ITENS
         oi.product_name,
         oi.quantity,
         oi.unit_price
@@ -52,12 +52,12 @@ export async function GET() {
           created_at: row.created_at,
           shipping_frete: Number(row.shipping_frete) || 0,
           
-          // 🔥 DADOS DO CLIENTE (DO PEDIDO)
+          //  DADOS DO CLIENTE (DO PEDIDO)
           cliente_nome: row.cliente_nome || 'Não informado',
           cliente_telefone: row.cliente_telefone || '',
           cliente_cpf: row.cliente_cpf || '',
           
-          // 🔥 ENDEREÇO (DO PEDIDO)
+          //  ENDEREÇO (DO PEDIDO)
           cliente_endereco: row.endereco || '',
           cliente_numero: row.numero || '',
           cliente_complemento: row.complemento || '',

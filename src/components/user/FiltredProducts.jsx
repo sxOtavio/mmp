@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useUser } from '@/contexts/UserContext';
 
-
 const normalizeCategoryValue = (value) =>
   String(value || "")
     .normalize("NFD")
@@ -73,8 +72,48 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
     setCurrentPage(0);
   }, [selectedCategory, searchTerm]);
 
-    // Função para adicionar ao carrinho
+  
   const handleAddToCart = (product) => {
+    const isSoldByWeight = product.sold_by_weight === true;
+    
+    let quantity = 1;
+    let pesoEspecifico = null;
+    
+    if (isSoldByWeight) {
+      
+      const pesoDesejado = prompt(
+        ` ${product.name}\n\nDigite o peso desejado (em kg):`,
+        '0.5'
+      );
+      
+      if (pesoDesejado === null) return;
+      
+      const peso = parseFloat(pesoDesejado);
+      if (isNaN(peso) || peso <= 0) {
+        alert('⚠️ Peso inválido!');
+        return;
+      }
+      
+      
+      quantity = peso;
+      pesoEspecifico = peso;
+    } else {
+      const qtdDesejada = prompt(
+        ` ${product.name}\n\nDigite a quantidade desejada:`,
+        '1'
+      );
+      
+      if (qtdDesejada === null) return;
+      
+      const qtd = parseInt(qtdDesejada);
+      if (isNaN(qtd) || qtd <= 0) {
+        alert('⚠️ Quantidade inválida!');
+        return;
+      }
+      
+      quantity = qtd;
+    }
+    
     const produtoParaCarrinho = {
       gtin: product.gtin_code || product.id,
       nome: product.name,
@@ -82,18 +121,21 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
       precoPromocional: product.promotion_price || null,
       estoque: product.stock || 999,
       categoria: product.category || "Promoção",
+      sold_by_weight: isSoldByWeight,
+      unit_type: product.unit_type || 'unidade',
+      weight_per_unit: product.weight_per_unit || 0.5,
+      peso_especifico: pesoEspecifico,
     };
     
-    addToCart(produtoParaCarrinho, 1);
+    addToCart(produtoParaCarrinho, quantity);
     
-    // Feedback visual no botão
     const btn = document.activeElement;
     if (btn) {
       const originalText = btn.innerHTML;
-      btn.innerHTML = "✓ Adicionado!";
+      btn.innerHTML = isSoldByWeight ? `✓ ${quantity}kg adicionado!` : "✓ Adicionado!";
       setTimeout(() => {
         btn.innerHTML = originalText;
-      }, 1000);
+      }, 1500);
     }
   };
 
@@ -125,12 +167,16 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
   const totalPages = Math.ceil((validProducts?.length || 0) / ITEMS_PER_PAGE);
 
   const priceCorrection = (p) => {
+    const tipoVenda = p.sold_by_weight ? ' /kg' : ' /un';
+    
     if (p.promotion_price == 0 || p.promotion_price == null) {
       return (
-        <p className="text-black font-bold text-sm">
-          <br />
-          R$ {Number(p.price).toFixed(2)}
-        </p>
+        <>
+          <p className="text-black font-bold text-sm">
+            R$ {Number(p.price).toFixed(2)}
+            <span className="text-xs text-gray-400 font-normal ml-1">{tipoVenda}</span>
+          </p>
+        </>
       );
     }
 
@@ -140,11 +186,10 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
           <p className="line-through text-gray-400 text-[10px]">
             R$ {Number(p.price).toFixed(2)}
           </p>
-
           <p className="text-red-600 font-bold text-sm">
             R$ {Number(p.promotion_price).toFixed(2)}
+            <span className="text-xs text-gray-400 font-normal ml-1">{tipoVenda}</span>
           </p>
-
           <p className="text-green-600 text-xs font-semibold">
             {Math.round(((p.price - p.promotion_price) / p.price) * 100)}% OFF
           </p>
@@ -155,6 +200,7 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
     return (
       <p className="font-bold text-sm">
         R$ {Number(p.price).toFixed(2)}
+        <span className="text-xs text-gray-400 font-normal ml-1">{tipoVenda}</span>
       </p>
     );
   };
@@ -250,8 +296,19 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
           {currentProducts.map((p, index) => (
             <div
               key={`${p.gtin_code || p.id || index}`}
-              className="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow"
+              className="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow relative"
             >
+              {/* BADGE DE CLASSIFICAÇÃO */}
+              <div className="absolute top-2 right-2 z-10">
+                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                  p.sold_by_weight 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-blue-500 text-white'
+                }`}>
+                  {p.sold_by_weight ? ' Peso' : ' Unidade'}
+                </span>
+              </div>
+
               <div className="bg-gray-100 w-full h-40 rounded mb-2 overflow-hidden flex items-center justify-center text-[10px] text-gray-400">
                 {p.image_url ? (
                   <img src={p.image_url} alt={p.name} className="w-full h-full object-contain" />
@@ -263,6 +320,12 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
               </div>
 
               <h3 className="font-bold text-sm text-black line-clamp-2 min-h-[40px]">{p.name}</h3>
+
+              {p.sold_by_weight && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Vendido por peso
+                </p>
+              )}
 
               {priceCorrection(p)}
 
@@ -283,7 +346,7 @@ export default function FiltredProducts({ selectedCategory = "Todos", searchTerm
                   active:scale-95
                 "
               >
-                🛒 Carrinho
+                {p.sold_by_weight ? '⚖️ Selecionar Peso' : '🛒 Carrinho'}
               </button>
             </div>
           ))}

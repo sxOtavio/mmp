@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@/contexts/UserContext'; // Use o contexto
+import { useUser } from '@/contexts/UserContext';
 import { useRouter } from "next/navigation";
 
 export function CartDrawer() {
@@ -9,9 +9,8 @@ export function CartDrawer() {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [localVersion, setLocalVersion] = useState(0);
-   const router = useRouter();
+  const router = useRouter();
 
-  // Verifica localStorage periodicamente
   useEffect(() => {
     const checkLocalStorage = () => {
       const savedCart = localStorage.getItem('@cart');
@@ -38,7 +37,23 @@ export function CartDrawer() {
     }
   }, [cart, mounted]);
 
-  const totalItens = cart.reduce((sum, item) => sum + item.quantity, 0);
+  
+  const totalItens = cart.reduce((sum, item) => {
+    if (item.sold_by_weight) {
+      // Para produtos por peso, conta como 1 item (não o peso)
+      return sum + 1;
+    }
+    return sum + item.quantity;
+  }, 0);
+
+  
+  const pesoTotal = cart.reduce((total, item) => {
+    if (item.sold_by_weight) {
+      return total + (item.peso_especifico || item.quantity || 0.5);
+    }
+    const pesoUnitario = item.weight_per_unit || 0.5;
+    return total + (pesoUnitario * item.quantity);
+  }, 0);
 
   if (!mounted) return null;
 
@@ -97,15 +112,41 @@ export function CartDrawer() {
                 {cart.map((item, idx) => {
                   const preco = item.precoPromocional || item.precoNormal;
                   const subtotal = Number(preco) * item.quantity;
+                  const isSoldByWeight = item.sold_by_weight === true;
+                  const peso = isSoldByWeight ? (item.peso_especifico || item.quantity || 0.5) : null;
+                  
                   return (
                     <div key={item.gtin || idx} className="border-b pb-4">
-                      <h4 className="font-medium text-black mb-1">{item.nome}</h4>
-                      <div className="text-sm text-black mb-2">
-                        R$ {Number(preco).toFixed(2)} x {item.quantity}
+                      <div className="flex justify-between items-start">
+                        <h4 className="font-medium text-black">{item.nome}</h4>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          isSoldByWeight 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {isSoldByWeight ? ' Peso' : ' Unidade'}
+                        </span>
                       </div>
+                      
+                      <div className="text-sm text-black mb-2">
+                        {isSoldByWeight ? (
+                          
+                          <>R$ {Number(preco).toFixed(2)}/kg × {peso.toFixed(2)}kg</>
+                        ) : (
+                          <>R$ {Number(preco).toFixed(2)} × {item.quantity}</>
+                        )}
+                      </div>
+                      
+                      {isSoldByWeight && peso && (
+                        <div className="text-xs text-gray-500 mb-2">
+                           {peso.toFixed(2)}kg selecionado
+                        </div>
+                      )}
+                      
                       <div className="font-bold text-gray-800 mb-2">
                         Subtotal: R$ {subtotal.toFixed(2)}
                       </div>
+                      
                       <div className="flex gap-2">
                         <button 
                           onClick={() => updateQuantity(item.gtin, item.quantity - 1)}
@@ -132,6 +173,14 @@ export function CartDrawer() {
               </div>
 
               <div className="mt-6 pt-4 border-t">
+               
+                {cart.some(item => item.sold_by_weight) && (
+                  <div className="text-sm text-gray-600 mb-2 flex justify-between">
+                    <span> Peso total do pedido:</span>
+                    <span className="font-medium">{pesoTotal.toFixed(2)} kg</span>
+                  </div>
+                )}
+                
                 <div className="flex justify-between text-black items-center text-lg font-bold mb-4">
                   <span>Total:</span>
                   <span className="text-red-600">R$ {cartTotal.toFixed(2)}</span>
