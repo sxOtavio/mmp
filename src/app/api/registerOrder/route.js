@@ -117,16 +117,34 @@ export async function POST(request) {
 
     const order = orderResult.rows[0];
 
-    for (const item of items) {
-      const unitPrice = Number(item.precoPromocional) || Number(item.precoNormal);
-      await client.query(
-        `
-        INSERT INTO order_items (order_id, product_id, quantity, unit_price, product_name)
-        VALUES ($1, $2, $3, $4, $5)
-        `,
-        [order.id, item.gtin, item.quantity, unitPrice, item.nome]
-      );
-    }
+for (const item of items) {
+  const unitPrice = Number(item.precoPromocional) || Number(item.precoNormal);
+  const isSoldByWeight = item.sold_by_weight === true;
+  
+  await client.query(
+    `
+    INSERT INTO order_items (
+      order_id, 
+      product_id, 
+      quantity, 
+      unit_price, 
+      product_name,
+      sold_by_weight
+  
+    )
+    VALUES ($1, $2, $3, $4, $5, $6)
+    `,
+    [
+      order.id, 
+      item.gtin, 
+      item.quantity, 
+      unitPrice, 
+      item.nome,
+      isSoldByWeight
+    
+    ]
+  );
+}
 
    
     const cpfLimpo = user.cpf ? user.cpf.replace(/\D/g, '') : customer.cpf ? customer.cpf.replace(/\D/g, '') : '';

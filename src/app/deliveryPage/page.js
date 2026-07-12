@@ -3,16 +3,68 @@
 import { useState } from 'react';
 import { useDelivery } from '@/hooks/useDelivery';
 
-// Mapeamento de status 
-const STATUS_MAP = {
-  pending: 'Aguardando',
-  preparing: 'Separando',
-  out_for_delivery: 'Em Rota',
-  delivered: 'Entregue',
-  cancelled: 'Cancelado'
+// FUNÇÃO PRINCIPAL - REUTILIZA A MESMA ABA DO WHATSAPP
+const abrirWhatsApp = (telefone, mensagem) => {
+  const telefoneLimpo = telefone.replace(/\D/g, '');
+  const telefoneFormatado = `55${telefoneLimpo}`;
+  const mensagemCodificada = encodeURIComponent(mensagem);
+  const url = `https://wa.me/${telefoneFormatado}?text=${mensagemCodificada}`;
+  
+  // TENTA REUTILIZAR A ABA DO WHATSAPP
+  const whatsappWindow = window.open('', 'whatsapp_window');
+  
+  if (whatsappWindow && !whatsappWindow.closed) {
+    whatsappWindow.location.href = url;
+    whatsappWindow.focus();
+  } else {
+    window.open(url, 'whatsapp_window');
+  }
 };
 
-// Configuração dos status
+// MENSAGEM DE AVISO DE PESO
+const gerarMensagemAvisoPeso = (pedido, itensPorPeso) => {
+  let mensagem = `🛒 *Pedido #${pedido.id} - Confirmação de Peso*\n\n`;
+  mensagem += `Olá *${pedido.cliente_nome}*, seu pedido está sendo separado! 🙏\n\n`;
+  mensagem += `📦 *Produtos que serão pesados:*\n`;
+  itensPorPeso.forEach(item => {
+    const peso = item.quantidade || 0;
+    mensagem += `\n⚖️ *${item.nome}*:\n`;
+    mensagem += `   Peso solicitado: ${peso.toFixed(2)}kg\n`;
+    mensagem += `   ⚠️ Pode sofrer variação de até ±5%\n`;
+  });
+  const totalEstimado = itensPorPeso.reduce((acc, item) => {
+    return acc + (item.preco * (item.quantidade || 0));
+  }, 0);
+  mensagem += `\n💰 *Valor estimado:* R$ ${totalEstimado.toFixed(2)}\n`;
+  mensagem += `\n📌 *Observação:*\n`;
+  mensagem += `Os produtos vendidos por peso são pesados no momento da separação.\n`;
+  mensagem += `O valor final pode variar ligeiramente.\n\n`;
+  mensagem += `💬 *Dúvidas?* Responda esta mensagem!\n`;
+  mensagem += `Agradecemos pela compreensão! 🙏`;
+  return mensagem;
+};
+
+// MENSAGEM DE CONFIRMAÇÃO
+const gerarMensagemConfirmacao = (pedido, itensConfirmados) => {
+  let mensagem = `✅ *Pedido #${pedido.id} CONFIRMADO!*\n\n`;
+  mensagem += `Olá *${pedido.cliente_nome}*, seu pedido foi separado e confirmado! 🎉\n\n`;
+  mensagem += `📦 *Produtos confirmados:*\n`;
+  itensConfirmados.forEach(item => {
+    const peso = item.peso_real || item.quantidade || 0;
+    mensagem += `\n⚖️ *${item.nome}*: ${peso.toFixed(2)}kg\n`;
+  });
+  const totalFinal = itensConfirmados.reduce((acc, item) => {
+    return acc + (item.preco * (item.peso_real || item.quantidade || 0));
+  }, 0);
+  mensagem += `\n💰 *Total final:* R$ ${totalFinal.toFixed(2)}\n\n`;
+  mensagem += `💳 *Agora é só pagar!*\n`;
+  mensagem += `Acesse o link para finalizar:\n`;
+  mensagem += `${window.location.origin}/pagamento/${pedido.id}\n\n`;
+  mensagem += `Obrigado por comprar conosco! 🙏`;
+  return mensagem;
+};
+
+// Mapeamento de status 
 const getStatusConfig = (status) => {
   const configs = {
     pending: {
@@ -79,7 +131,6 @@ export default function DeliveryPage() {
     orders: pedidos,
     loading,
     error,
-    stats,
     updateOrderStatus,
   } = useDelivery();
 
@@ -88,6 +139,7 @@ export default function DeliveryPage() {
   const [mensagemNotificacao, setMensagemNotificacao] = useState('');
   const [pedidoSelecionado, setPedidoSelecionado] = useState(null);
   const [ordem, setOrdem] = useState('recente');
+  const [pesosRetificados, setPesosRetificados] = useState({});
 
   const contarPorStatus = (pedidosList) => {
     const contagem = {
@@ -144,6 +196,111 @@ export default function DeliveryPage() {
 
   const abrirDetalhes = (pedido) => {
     setPedidoSelecionado(pedido);
+    setPesosRetificados({});
+  };
+
+  // BOTÃO 1: AVISAR SOBRE PESO
+  const abrirWhatsAppAvisoPeso = (pedido) => {
+    const itensPorPeso = pedido.itens?.filter(item => item.sold_by_weight === true) || [];
+    
+    if (itensPorPeso.length === 0) {
+      alert('⚠️ Este pedido não tem produtos por peso!');
+      return;
+    }
+
+    if (!pedido.cliente_telefone) {
+      alert('⚠️ Cliente não tem telefone cadastrado!');
+      return;
+    }
+
+    const mensagem = gerarMensagemAvisoPeso(pedido, itensPorPeso);
+    abrirWhatsApp(pedido.cliente_telefone, mensagem);
+  };
+
+  // BOTÃO 2: FALAR COM CLIENTE
+  const abrirWhatsAppCliente = (pedido) => {
+    if (!pedido.cliente_telefone) {
+      alert('⚠️ Cliente não tem telefone cadastrado!');
+      return;
+    }
+
+    const mensagem = `Olá *${pedido.cliente_nome}*! 👋\n\nSeu pedido #${pedido.id} está sendo separado.`;
+    abrirWhatsApp(pedido.cliente_telefone, mensagem);
+  };
+
+  const handlePesoChange = (itemId, novoPeso) => {
+    setPesosRetificados(prev => ({
+      ...prev,
+      [itemId]: parseFloat(novoPeso) || 0
+    }));
+  };
+
+  // BOTÃO 3: APENAS RETIFICAR PESOS (sem enviar mensagem)
+  const retificarPesos = async (pedido) => {
+    const itensPorPeso = pedido.itens?.filter(item => item.sold_by_weight === true) || [];
+    
+    if (itensPorPeso.length === 0) {
+      alert('⚠️ Este pedido não tem produtos por peso!');
+      return;
+    }
+
+    const todosRetificados = itensPorPeso.every(item => 
+      pesosRetificados[item.id] !== undefined && pesosRetificados[item.id] > 0
+    );
+
+    if (!todosRetificados) {
+      alert('⚠️ Retifique o peso de todos os produtos por peso!');
+      return;
+    }
+
+    try {
+      const itensComPesoFinal = itensPorPeso.map(item => ({
+        id: item.id,
+        peso_real: pesosRetificados[item.id]
+      }));
+
+      const response = await fetch(`/api/pedido/${pedido.id}/atualizar-pesos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ itens: itensComPesoFinal }),
+      });
+
+      if (response.ok) {
+        setMensagemNotificacao('✅ Pesos retificados com sucesso!');
+        setMostrarNotificacao(true);
+        setTimeout(() => setMostrarNotificacao(false), 3000);
+        setPedidoSelecionado(null);
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Erro ao retificar pesos:', error);
+      alert('❌ Erro ao salvar os novos pesos');
+    }
+  };
+
+  // BOTÃO 4: ENVIAR CONFIRMAÇÃO (com os pesos já retificados)
+  const enviarConfirmacao = (pedido) => {
+    const itensPorPeso = pedido.itens?.filter(item => item.sold_by_weight === true) || [];
+    
+    if (itensPorPeso.length === 0) {
+      alert('⚠️ Este pedido não tem produtos por peso!');
+      return;
+    }
+
+    const todosRetificados = itensPorPeso.every(item => 
+      item.peso_real !== undefined && item.peso_real !== null && item.peso_real > 0
+    );
+
+    if (!todosRetificados) {
+      alert('⚠️ Retifique os pesos antes de enviar a confirmação!');
+      return;
+    }
+
+    const mensagem = gerarMensagemConfirmacao(pedido, itensPorPeso);
+    abrirWhatsApp(pedido.cliente_telefone, mensagem);
+    setPedidoSelecionado(null);
   };
 
   const ordenarPedidos = (pedidosList) => {
@@ -228,7 +385,7 @@ export default function DeliveryPage() {
         </div>
       )}
 
-      {/* Modal de Detalhes  */}
+      {/* Modal de Detalhes */}
       {pedidoSelecionado && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -237,7 +394,7 @@ export default function DeliveryPage() {
               <button onClick={() => setPedidoSelecionado(null)} className="text-2xl text-black hover:text-gray-500">&times;</button>
             </div>
             <div className="p-6 space-y-6">
-              {/*  CLIENTE  */}
+              {/* CLIENTE */}
               <div className="p-4 rounded-lg bg-gray-50">
                 <h3 className="font-semibold mb-2 text-lg text-black">👤 Cliente</h3>
                 <p className="text-black">
@@ -267,20 +424,101 @@ export default function DeliveryPage() {
                 <h3 className="font-semibold mb-3 text-lg text-black">🛒 Itens do Pedido</h3>
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {pedidoSelecionado.itens && pedidoSelecionado.itens.length > 0 ? (
-                    pedidoSelecionado.itens.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-0">
-                        <div>
-                          <span className="font-medium text-black">{item.quantidade}x</span>
-                          <span className="ml-2 text-black">{item.nome}</span>
+                    pedidoSelecionado.itens.map((item, idx) => {
+                      const isSoldByWeight = item.sold_by_weight === true;
+                      const pesoRetificado = pesosRetificados[item.id] || item.quantidade || 0;
+                      
+                      return (
+                        <div key={idx} className="flex flex-col py-2 border-b border-gray-200 last:border-0">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <span className="font-medium text-black">{item.quantidade}x</span>
+                              <span className="ml-2 text-black">{item.nome}</span>
+                              {isSoldByWeight && (
+                                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                                  ⚖️ Por peso
+                                </span>
+                              )}
+                              {item.peso_real && (
+                                <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                                  ✏️ Retificado: {item.peso_real.toFixed(2)}kg
+                                </span>
+                              )}
+                            </div>
+                            <span className="font-semibold text-black">R$ {(item.preco * (item.peso_real || item.quantidade)).toFixed(2)}</span>
+                          </div>
+                          
+                          {isSoldByWeight && (
+                            <div className="mt-2 flex items-center gap-3 pl-4">
+                              <input 
+                                type="number" 
+                                step="0.01"
+                                min="0.01"
+                                value={pesoRetificado}
+                                onChange={(e) => handlePesoChange(item.id, e.target.value)}
+                                placeholder="Peso real (kg)"
+                                className="w-28 px-2 py-1 border border-gray-300 rounded text-sm text-black focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                              />
+                              <span className="text-xs text-black">kg</span>
+                              <span className="text-xs text-black opacity-60">
+                                (original: {item.quantidade.toFixed(2)}kg)
+                              </span>
+                              {pesoRetificado !== item.quantidade && (
+                                <span className="text-xs text-blue-600 font-medium ml-auto">
+                                  ⚡ {((pesoRetificado - item.quantidade) * item.preco).toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <span className="font-semibold text-black">R$ {(item.preco * item.quantidade).toFixed(2)}</span>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <p className="text-black text-center py-4">Nenhum item encontrado</p>
                   )}
                 </div>
                 
+                {/* 🔥 4 BOTÕES */}
+                <div className="mt-4 pt-3 border-t border-gray-200">
+                  <div className="flex flex-wrap gap-3">
+                    {pedidoSelecionado.itens?.some(item => item.sold_by_weight === true) && (
+                      <>
+                        <button
+                          onClick={() => abrirWhatsAppAvisoPeso(pedidoSelecionado)}
+                          className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition flex items-center gap-2 text-sm"
+                        >
+                          <span>📱</span>
+                          Avisar sobre peso
+                        </button>
+
+                        <button
+                          onClick={() => retificarPesos(pedidoSelecionado)}
+                          className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition flex items-center gap-2 text-sm"
+                        >
+                          <span>✏️</span>
+                          Retificar pesos
+                        </button>
+
+                        <button
+                          onClick={() => enviarConfirmacao(pedidoSelecionado)}
+                          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center gap-2 text-sm"
+                        >
+                          <span>✅</span>
+                          Enviar confirmação
+                        </button>
+                      </>
+                    )}
+                    
+                    <button
+                      onClick={() => abrirWhatsAppCliente(pedidoSelecionado)}
+                      className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition flex items-center gap-2 text-sm"
+                    >
+                      <span>💬</span>
+                      Falar com cliente
+                    </button>
+                  </div>
+                </div>
+
                 {/* SUBTOTAL + FRETE + TOTAL */}
                 <div className="mt-4 pt-3 border-t border-gray-200">
                   <div className="flex justify-between items-center text-sm">
@@ -318,7 +556,6 @@ export default function DeliveryPage() {
 
       {/* Conteúdo Principal */}
       <div className="p-6 max-w-7xl mx-auto">
-        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-black">Painel do Entregador</h1>
@@ -377,7 +614,6 @@ export default function DeliveryPage() {
               ))}
             </div>
 
-            {/* Ordenação */}
             <select
               value={ordem}
               onChange={(e) => setOrdem(e.target.value)}
@@ -391,7 +627,7 @@ export default function DeliveryPage() {
           </div>
         </div>
 
-        {/* Lista de Pedidos  */}
+        {/* Lista de Pedidos */}
         {pedidosFiltrados.length === 0 ? (
           <div className="text-center py-20 rounded-xl bg-white">
             <div className="text-7xl mb-4">📭</div>
@@ -404,6 +640,7 @@ export default function DeliveryPage() {
               const statusPedido = pedido.status_pedido || pedido.status || 'pending';
               const statusConfig = getStatusConfig(statusPedido);
               const tempoPedido = formatarData(pedido.created_at || pedido.createdAt);
+              const hasWeightProducts = pedido.itens?.some(item => item.sold_by_weight === true);
 
               return (
                 <div
@@ -423,13 +660,20 @@ export default function DeliveryPage() {
                           </div>
                         </div>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusConfig.bg} text-black border ${statusConfig.border}`}>
-                        {statusConfig.label}
-                      </span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusConfig.bg} text-black border ${statusConfig.border}`}>
+                          {statusConfig.label}
+                        </span>
+                        {hasWeightProducts && (
+                          <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
+                            ⚖️ Com peso
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* BODY   */}
+                  {/* BODY */}
                   <div className="p-4 space-y-3">
                     <div className="flex items-start gap-2">
                       <div className="flex-1">
@@ -456,8 +700,11 @@ export default function DeliveryPage() {
                           {pedido.itens && pedido.itens.length > 0 ? (
                             <>
                               {pedido.itens.slice(0, 3).map((item, i) => (
-                                <p key={i} className="text-sm text-black">
+                                <p key={i} className="text-sm text-black flex items-center gap-1">
                                   {item.quantidade}x {item.nome}
+                                  {item.sold_by_weight && (
+                                    <span className="text-xs text-green-600">⚖️</span>
+                                  )}
                                 </p>
                               ))}
                               {pedido.itens.length > 3 && (
@@ -479,7 +726,6 @@ export default function DeliveryPage() {
                       </span>
                     </div>
 
-                    {/* 🔥 MOSTRA O FRETE */}
                     {pedido.shipping_frete > 0 && (
                       <div className="flex justify-end items-center text-xs text-black opacity-60">
                         <span>Frete: R$ {pedido.shipping_frete.toFixed(2)}</span>
@@ -513,7 +759,6 @@ export default function DeliveryPage() {
         )}
       </div>
 
-      {/* Animações com Tailwind */}
       <style>{`
         @keyframes slide-in {
           from {

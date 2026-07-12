@@ -33,7 +33,8 @@ export async function GET() {
         --  ITENS
         oi.product_name,
         oi.quantity,
-        oi.unit_price
+        oi.unit_price,
+        oi.sold_by_weight 
 
       FROM orders o
       INNER JOIN order_items oi
@@ -70,10 +71,12 @@ export async function GET() {
         };
       }
 
+    
       pedidosMap[row.order_id].itens.push({
         nome: row.product_name,
         quantidade: row.quantity,
         preco: Number(row.unit_price),
+        sold_by_weight: row.sold_by_weight || false, // ← ADICIONADO
       });
     });
 
