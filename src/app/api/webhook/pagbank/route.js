@@ -90,32 +90,75 @@ const extractOrderId = (payload, rawBody = "") => {
   return extractReferenceFromText(rawBody);
 };
 
+const hasApprovedKeyword = (value) => {
+  if (!value) return false;
+
+  const normalized = String(value).toLowerCase();
+  return /(approved|paid|confirmed|settled|captured|completed|authorized|success|succeeded)/.test(
+    normalized,
+  );
+};
+
+const hasDeclinedKeyword = (value) => {
+  if (!value) return false;
+
+  const normalized = String(value).toLowerCase();
+  return /(declined|failed|canceled|cancelled|expired|refused|denied|error)/.test(
+    normalized,
+  );
+};
+
+const isLikelyOrderResource = (payload) => {
+  if (!payload || typeof payload !== "object") return false;
+
+  return Boolean(
+    payload.reference_id ||
+      payload.order_id ||
+      payload.id ||
+      payload.resource?.reference_id ||
+      payload.resource?.id,
+  ) && Boolean(
+    payload.items ||
+      payload.customer ||
+      payload.created_at ||
+      payload.charges ||
+      payload.payment_methods ||
+      payload.payments ||
+      payload.payment_response,
+  );
+};
+
 const isPaymentApproved = (payload) => {
-  const values = [
-    payload?.event,
-    payload?.type,
-    payload?.status,
-    payload?.resource?.status,
-    payload?.resource?.event,
-    payload?.data?.status,
-    payload?.data?.attributes?.status,
-    payload?.payment?.status,
-    payload?.charge?.status,
-    payload?.notification?.event,
-    payload?.notification?.status,
-    payload?.notification?.resource?.status,
-    payload?.resource?.payment?.status,
-    payload?.resource?.payment_response?.status,
-  ];
+  const stack = [payload];
 
-  return values.some((value) => {
-    if (!value) return false;
+  while (stack.length > 0) {
+    const current = stack.pop();
 
-    const normalized = String(value).toLowerCase();
-    return /(approved|paid|confirmed|settled|captured|completed|authorized)/.test(
-      normalized,
-    );
-  });
+    if (!current || typeof current !== "object") {
+      continue;
+    }
+
+    for (const [key, value] of Object.entries(current)) {
+      if (key === "status" || key === "state" || key === "event" || key === "type") {
+        if (hasApprovedKeyword(value)) return true;
+        if (hasDeclinedKeyword(value)) return false;
+      }
+
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          stack.push(item);
+        }
+      } else if (value && typeof value === "object") {
+        stack.push(value);
+      }
+    }
+  }
+
+  if (isLikelyOrderResource(payload)) {
+    return true;
+  }
+
+  return false;
 };
 
 export async function POST(request) {
