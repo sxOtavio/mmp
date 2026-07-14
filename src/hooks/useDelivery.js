@@ -27,7 +27,7 @@ export function useDelivery() {
     preparando: 0,
     aguardando: 0,
     peso_retificado: 0,
-    aguardando_confirmacao: 0
+    aguardando_confirmacao: 0,
   });
 
   // Ref para controle
@@ -50,20 +50,39 @@ export function useDelivery() {
         preparando: 0,
         aguardando: 0,
         peso_retificado: 0,
-        aguardando_confirmacao: 0
+        aguardando_confirmacao: 0,
       });
       return;
     }
 
     setStats({
       total: ordersList.length,
-      entregues: ordersList.filter(o => o.status_pedido === 'delivered' || o.status === 'delivered').length,
-      pendentes: ordersList.filter(o => o.status_pedido === 'pending' || o.status === 'pending').length,
-      emRota: ordersList.filter(o => o.status_pedido === 'out_for_delivery' || o.status === 'out_for_delivery').length,
-      preparando: ordersList.filter(o => o.status_pedido === 'preparing' || o.status === 'preparing').length,
-      aguardando: ordersList.filter(o => o.status_pedido === 'pending' || o.status === 'pending').length,
-      peso_retificado: ordersList.filter(o => o.status_pedido === 'weight_revised' || o.status === 'weight_revised').length,
-      aguardando_confirmacao: ordersList.filter(o => o.status_pedido === 'waiting_confirmation' || o.status === 'waiting_confirmation').length
+      entregues: ordersList.filter(
+        (o) => o.status_pedido === "delivered" || o.status === "delivered",
+      ).length,
+      pendentes: ordersList.filter(
+        (o) => o.status_pedido === "pending" || o.status === "pending",
+      ).length,
+      emRota: ordersList.filter(
+        (o) =>
+          o.status_pedido === "out_for_delivery" ||
+          o.status === "out_for_delivery",
+      ).length,
+      preparando: ordersList.filter(
+        (o) => o.status_pedido === "preparing" || o.status === "preparing",
+      ).length,
+      aguardando: ordersList.filter(
+        (o) => o.status_pedido === "pending" || o.status === "pending",
+      ).length,
+      peso_retificado: ordersList.filter(
+        (o) =>
+          o.status_pedido === "weight_revised" || o.status === "weight_revised",
+      ).length,
+      aguardando_confirmacao: ordersList.filter(
+        (o) =>
+          o.status_pedido === "waiting_confirmation" ||
+          o.status === "waiting_confirmation",
+      ).length,
     });
   }, []);
 
@@ -73,7 +92,7 @@ export function useDelivery() {
       console.log("Já está carregando, ignorando...");
       return;
     }
-    
+
     try {
       isUpdating.current = true;
       setLoading(true);
@@ -83,7 +102,6 @@ export function useDelivery() {
       console.log("HOOK Pedidos recebidos:", data?.length || 0);
       setOrders(data || []);
       calcularStats(data || []);
-
     } catch (error) {
       console.error("Erro em loadOrders:", error);
       setError(error.message || "Erro ao buscar pedidos");
@@ -94,75 +112,79 @@ export function useDelivery() {
   }, [calcularStats]);
 
   // Buscar pedidos por status
-  const loadOrdersByStatus = useCallback(async (status) => {
-    if (isUpdating.current) {
-      console.log("Já está carregando, ignorando...");
-      return;
-    }
-    
-    try {
-      isUpdating.current = true;
-      setLoading(true);
-      setError(null);
+  const loadOrdersByStatus = useCallback(
+    async (status) => {
+      if (isUpdating.current) {
+        console.log("Já está carregando, ignorando...");
+        return;
+      }
 
-      const data = await fetchOrdersByStatus(status);
-      console.log(`Pedidos com status ${status}:`, data?.length || 0);
-      setOrders(data || []);
-      calcularStats(data || []);
+      try {
+        isUpdating.current = true;
+        setLoading(true);
+        setError(null);
 
-    } catch (error) {
-      console.error(`Erro em loadOrdersByStatus (${status}):`, error);
-      setError(error.message || "Erro ao buscar pedidos por status");
-    } finally {
-      setLoading(false);
-      isUpdating.current = false;
-    }
-  }, [calcularStats]);
+        const data = await fetchOrdersByStatus(status);
+        console.log(`Pedidos com status ${status}:`, data?.length || 0);
+        setOrders(data || []);
+        calcularStats(data || []);
+      } catch (error) {
+        console.error(`Erro em loadOrdersByStatus (${status}):`, error);
+        setError(error.message || "Erro ao buscar pedidos por status");
+      } finally {
+        setLoading(false);
+        isUpdating.current = false;
+      }
+    },
+    [calcularStats],
+  );
 
   // Atualizar status do pedido
-  const updateOrderStatus = useCallback(async (orderId, status) => {
-    if (isUpdating.current) {
-      console.log("⏳ Já está atualizando, ignorando...");
-      return null;
-    }
+  const updateOrderStatus = useCallback(
+    async (orderId, status) => {
+      if (isUpdating.current) {
+        console.log("⏳ Já está atualizando, ignorando...");
+        return null;
+      }
 
-    try {
-      isUpdating.current = true;
-      setLoading(true);
-      setError(null);
+      try {
+        isUpdating.current = true;
+        setLoading(true);
+        setError(null);
 
-      const data = await updateOrderStatusService(orderId, status);
-      console.log(`Pedido ${orderId} atualizado para ${status}`);
+        const data = await updateOrderStatusService(orderId, status);
+        console.log(`Pedido ${orderId} atualizado para ${status}`);
 
-      const currentOrders = ordersRef.current;
-      const updatedOrders = currentOrders.map(order => {
-        if (order.id === orderId) {
-          return { 
-            ...order, 
-            status_pedido: status,
-            status: status,
-            atualizado_em: new Date().toISOString() 
-          };
-        }
-        return order;
-      });
+        const currentOrders = ordersRef.current;
+        const updatedOrders = currentOrders.map((order) => {
+          if (order.id === orderId) {
+            return {
+              ...order,
+              status_pedido: status,
+              status: status,
+              atualizado_em: new Date().toISOString(),
+            };
+          }
+          return order;
+        });
 
-      setOrders(updatedOrders);
-      calcularStats(updatedOrders);
+        setOrders(updatedOrders);
+        calcularStats(updatedOrders);
 
-      return data;
-
-    } catch (error) {
-      console.error("Erro em updateOrderStatus:", error);
-      setError(error.message || "Erro ao atualizar status");
-      return null;
-    } finally {
-      setLoading(false);
-      setTimeout(() => {
-        isUpdating.current = false;
-      }, 300);
-    }
-  }, [calcularStats]);
+        return data;
+      } catch (error) {
+        console.error("Erro em updateOrderStatus:", error);
+        setError(error.message || "Erro ao atualizar status");
+        return null;
+      } finally {
+        setLoading(false);
+        setTimeout(() => {
+          isUpdating.current = false;
+        }, 300);
+      }
+    },
+    [calcularStats],
+  );
 
   // Buscar detalhes do pedido
   const loadOrderDetails = useCallback(async (orderId) => {
@@ -174,7 +196,6 @@ export function useDelivery() {
       console.log(`Detalhes do pedido ${orderId}:`, data);
       setCurrentOrder(data);
       return data;
-
     } catch (error) {
       console.error("Erro em loadOrderDetails:", error);
       setError(error.message || "Erro ao buscar detalhes do pedido");
@@ -185,39 +206,44 @@ export function useDelivery() {
   }, []);
 
   // Atribuir entregador ao pedido
-  const assignDeliveryPerson = useCallback(async (orderId, deliveryPersonId) => {
-    if (isUpdating.current) return null;
-    
-    try {
-      isUpdating.current = true;
-      setLoading(true);
-      setError(null);
+  const assignDeliveryPerson = useCallback(
+    async (orderId, deliveryPersonId) => {
+      if (isUpdating.current) return null;
 
-      const data = await assignDeliveryPersonService(orderId, deliveryPersonId);
-      console.log(`Entregador atribuído ao pedido ${orderId}`);
+      try {
+        isUpdating.current = true;
+        setLoading(true);
+        setError(null);
 
-      const currentOrders = ordersRef.current;
-      const updatedOrders = currentOrders.map(order => 
-        order.id === orderId 
-          ? { ...order, entregador_id: deliveryPersonId }
-          : order
-      );
+        const data = await assignDeliveryPersonService(
+          orderId,
+          deliveryPersonId,
+        );
+        console.log(`Entregador atribuído ao pedido ${orderId}`);
 
-      setOrders(updatedOrders);
+        const currentOrders = ordersRef.current;
+        const updatedOrders = currentOrders.map((order) =>
+          order.id === orderId
+            ? { ...order, entregador_id: deliveryPersonId }
+            : order,
+        );
 
-      return data;
+        setOrders(updatedOrders);
 
-    } catch (error) {
-      console.error("Erro em assignDeliveryPerson:", error);
-      setError(error.message || "Erro ao atribuir entregador");
-      return null;
-    } finally {
-      setLoading(false);
-      setTimeout(() => {
-        isUpdating.current = false;
-      }, 300);
-    }
-  }, []);
+        return data;
+      } catch (error) {
+        console.error("Erro em assignDeliveryPerson:", error);
+        setError(error.message || "Erro ao atribuir entregador");
+        return null;
+      } finally {
+        setLoading(false);
+        setTimeout(() => {
+          isUpdating.current = false;
+        }, 300);
+      }
+    },
+    [],
+  );
 
   // Buscar entregadores disponíveis
   const loadAvailableDeliveryPersons = useCallback(async () => {
@@ -228,7 +254,6 @@ export function useDelivery() {
       const data = await fetchAvailableDeliveryPersons();
       console.log("Entregadores disponíveis:", data?.length || 0);
       return data || [];
-
     } catch (error) {
       console.error("Erro em loadAvailableDeliveryPersons:", error);
       setError(error.message || "Erro ao buscar entregadores");
@@ -246,7 +271,6 @@ export function useDelivery() {
       const data = await updateDeliveryLocation(orderId, latitude, longitude);
       console.log(`Localização do pedido ${orderId} atualizada`);
       return data;
-
     } catch (error) {
       console.error("Erro em updateLocation:", error);
       setError(error.message || "Erro ao atualizar localização");
@@ -255,40 +279,47 @@ export function useDelivery() {
   }, []);
 
   // Cancelar entrega
-  const cancelDelivery = useCallback(async (orderId, motivo) => {
-    if (isUpdating.current) return null;
-    
-    try {
-      isUpdating.current = true;
-      setLoading(true);
-      setError(null);
+  const cancelDelivery = useCallback(
+    async (orderId, motivo) => {
+      if (isUpdating.current) return null;
 
-      const data = await cancelDeliveryService(orderId, motivo);
-      console.log(`Pedido ${orderId} cancelado`);
+      try {
+        isUpdating.current = true;
+        setLoading(true);
+        setError(null);
 
-      const currentOrders = ordersRef.current;
-      const updatedOrders = currentOrders.map(order => 
-        order.id === orderId 
-          ? { ...order, status_pedido: 'cancelled', status: 'cancelled', motivo_cancelamento: motivo }
-          : order
-      );
+        const data = await cancelDeliveryService(orderId, motivo);
+        console.log(`Pedido ${orderId} cancelado`);
 
-      setOrders(updatedOrders);
-      calcularStats(updatedOrders);
+        const currentOrders = ordersRef.current;
+        const updatedOrders = currentOrders.map((order) =>
+          order.id === orderId
+            ? {
+                ...order,
+                status_pedido: "cancelled",
+                status: "cancelled",
+                motivo_cancelamento: motivo,
+              }
+            : order,
+        );
 
-      return data;
+        setOrders(updatedOrders);
+        calcularStats(updatedOrders);
 
-    } catch (error) {
-      console.error("Erro em cancelDelivery:", error);
-      setError(error.message || "Erro ao cancelar entrega");
-      return null;
-    } finally {
-      setLoading(false);
-      setTimeout(() => {
-        isUpdating.current = false;
-      }, 300);
-    }
-  }, [calcularStats]);
+        return data;
+      } catch (error) {
+        console.error("Erro em cancelDelivery:", error);
+        setError(error.message || "Erro ao cancelar entrega");
+        return null;
+      } finally {
+        setLoading(false);
+        setTimeout(() => {
+          isUpdating.current = false;
+        }, 300);
+      }
+    },
+    [calcularStats],
+  );
 
   // Buscar estatísticas do entregador
   const loadDeliveryStats = useCallback(async (deliveryPersonId) => {
@@ -299,7 +330,6 @@ export function useDelivery() {
       const data = await fetchDeliveryStats(deliveryPersonId);
       console.log(`Estatísticas do entregador:`, data);
       return data;
-
     } catch (error) {
       console.error("Erro em loadDeliveryStats:", error);
       setError(error.message || "Erro ao buscar estatísticas");
@@ -310,66 +340,70 @@ export function useDelivery() {
   }, []);
 
   // Buscar pedidos do entregador
-  const loadMyOrders = useCallback(async (deliveryPersonId) => {
-    if (isUpdating.current) return;
-    
-    try {
-      isUpdating.current = true;
-      setLoading(true);
-      setError(null);
+  const loadMyOrders = useCallback(
+    async (deliveryPersonId) => {
+      if (isUpdating.current) return;
 
-      const data = await fetchOrdersByDeliveryPerson(deliveryPersonId);
-      console.log(`Meus pedidos:`, data?.length || 0);
-      setOrders(data || []);
-      calcularStats(data || []);
-      return data;
+      try {
+        isUpdating.current = true;
+        setLoading(true);
+        setError(null);
 
-    } catch (error) {
-      console.error("Erro em loadMyOrders:", error);
-      setError(error.message || "Erro ao buscar seus pedidos");
-    } finally {
-      setLoading(false);
-      setTimeout(() => {
-        isUpdating.current = false;
-      }, 300);
-    }
-  }, [calcularStats]);
+        const data = await fetchOrdersByDeliveryPerson(deliveryPersonId);
+        console.log(`Meus pedidos:`, data?.length || 0);
+        setOrders(data || []);
+        calcularStats(data || []);
+        return data;
+      } catch (error) {
+        console.error("Erro em loadMyOrders:", error);
+        setError(error.message || "Erro ao buscar seus pedidos");
+      } finally {
+        setLoading(false);
+        setTimeout(() => {
+          isUpdating.current = false;
+        }, 300);
+      }
+    },
+    [calcularStats],
+  );
 
   // Confirmar entrega com comprovante
-  const confirmDeliveryWithProof = useCallback(async (orderId, proofData) => {
-    if (isUpdating.current) return null;
-    
-    try {
-      isUpdating.current = true;
-      setLoading(true);
-      setError(null);
+  const confirmDeliveryWithProof = useCallback(
+    async (orderId, proofData) => {
+      if (isUpdating.current) return null;
 
-      const data = await confirmDelivery(orderId, proofData);
-      console.log(`Entrega do pedido ${orderId} confirmada`);
+      try {
+        isUpdating.current = true;
+        setLoading(true);
+        setError(null);
 
-      const currentOrders = ordersRef.current;
-      const updatedOrders = currentOrders.map(order => 
-        order.id === orderId 
-          ? { ...order, status_pedido: 'delivered', status: 'delivered' }
-          : order
-      );
+        const data = await confirmDelivery(orderId, proofData);
+        console.log(`Entrega do pedido ${orderId} confirmada`);
 
-      setOrders(updatedOrders);
-      calcularStats(updatedOrders);
+        const currentOrders = ordersRef.current;
+        const updatedOrders = currentOrders.map((order) =>
+          order.id === orderId
+            ? { ...order, status_pedido: "delivered", status: "delivered" }
+            : order,
+        );
 
-      return data;
+        setOrders(updatedOrders);
+        calcularStats(updatedOrders);
 
-    } catch (error) {
-      console.error("Erro em confirmDeliveryWithProof:", error);
-      setError(error.message || "Erro ao confirmar entrega");
-      return null;
-    } finally {
-      setLoading(false);
-      setTimeout(() => {
-        isUpdating.current = false;
-      }, 300);
-    }
-  }, [calcularStats]);
+        return data;
+      } catch (error) {
+        console.error("Erro em confirmDeliveryWithProof:", error);
+        setError(error.message || "Erro ao confirmar entrega");
+        return null;
+      } finally {
+        setLoading(false);
+        setTimeout(() => {
+          isUpdating.current = false;
+        }, 300);
+      }
+    },
+    [calcularStats],
+  );
 
   // Limpar erros
   const clearError = useCallback(() => {
@@ -405,7 +439,7 @@ export function useDelivery() {
 
     // Funções principais
     loadOrders,
-    loadOrdersByStatus, 
+    loadOrdersByStatus,
     loadOrderDetails,
     loadAvailableDeliveryPersons,
     loadDeliveryStats,
@@ -420,6 +454,6 @@ export function useDelivery() {
     clearError,
 
     // Funções auxiliares
-    calcularStats
+    calcularStats,
   };
 }

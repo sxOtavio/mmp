@@ -39,10 +39,13 @@ export default function DeliveryPage() {
 
       if (!pedidoAnterior) return false;
 
-      const statusAnterior = pedidoAnterior.status_pedido || pedidoAnterior.status;
+      const statusAnterior =
+        pedidoAnterior.status_pedido || pedidoAnterior.status;
       const statusAtual = pedido.status_pedido || pedido.status;
 
-      return statusAnterior === "waiting_confirmation" && statusAtual === "preparing";
+      return (
+        statusAnterior === "waiting_confirmation" && statusAtual === "preparing"
+      );
     });
 
     if (pedidoConfirmado) {

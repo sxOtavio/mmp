@@ -3,7 +3,11 @@ import crypto from "crypto";
 import { pool } from "@/lib/db";
 
 const getWebhookSecret = () => {
-  return process.env.PAGBANK_WEBHOOK_SECRET || process.env.PAGBANK_WEBHOOK_TOKEN || "";
+  return (
+    process.env.PAGBANK_WEBHOOK_SECRET ||
+    process.env.PAGBANK_WEBHOOK_TOKEN ||
+    ""
+  );
 };
 
 const verifySignature = (rawBody, signature) => {
@@ -25,51 +29,93 @@ const verifySignature = (rawBody, signature) => {
   return expected === signature.toLowerCase();
 };
 
-const extractOrderId = (payload) => {
-  const candidates = [
-    payload?.reference_id,
-    payload?.data?.reference_id,
-    payload?.resource?.reference_id,
-    payload?.notification?.reference_id,
-    payload?.charge?.reference_id,
-    payload?.payment?.reference_id,
-    payload?.data?.id,
+const normalizeReferenceValue = (value) => {
+  if (value === null || value === undefined) return null;
+
+  const asString = String(value).trim();
+  if (!asString) return null;
+
+  const normalized = asString.replace(/^checkout-/i, "");
+  const asNumber = Number(normalized);
+
+  if (!Number.isNaN(asNumber)) {
+    return String(asNumber);
+  }
+
+  return normalized;
+};
+
+const extractReferenceFromText = (rawBody) => {
+  if (!rawBody) return null;
+
+  const patterns = [
+    /"reference_id"\s*:\s*"([^"]+)"/i,
+    /"order_id"\s*:\s*"([^"]+)"/i,
+    /"referenceId"\s*:\s*"([^"]+)"/i,
   ];
 
-  for (const value of candidates) {
-    if (!value) continue;
-
-    const normalized = String(value).replace(/^checkout-/, "");
-    const asNumber = Number(normalized);
-
-    if (!Number.isNaN(asNumber)) {
-      return String(asNumber);
-    }
-
-    if (normalized) {
-      return normalized;
+  for (const pattern of patterns) {
+    const match = rawBody.match(pattern);
+    if (match?.[1]) {
+      return normalizeReferenceValue(match[1]);
     }
   }
 
   return null;
 };
 
+const extractOrderId = (payload, rawBody = "") => {
+  const candidates = [
+    payload?.reference_id,
+    payload?.data?.reference_id,
+    payload?.data?.attributes?.reference_id,
+    payload?.resource?.reference_id,
+    payload?.resource?.order_id,
+    payload?.notification?.reference_id,
+    payload?.notification?.resource?.reference_id,
+    payload?.charge?.reference_id,
+    payload?.payment?.reference_id,
+    payload?.payment?.order_id,
+    payload?.resource?.data?.reference_id,
+    payload?.data?.id,
+  ];
+
+  for (const value of candidates) {
+    const normalized = normalizeReferenceValue(value);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return extractReferenceFromText(rawBody);
+};
+
 const isPaymentApproved = (payload) => {
-  const event = String(payload?.event || payload?.type || payload?.notification?.event || "")
-    .toLowerCase();
+  const values = [
+    payload?.event,
+    payload?.type,
+    payload?.status,
+    payload?.resource?.status,
+    payload?.resource?.event,
+    payload?.data?.status,
+    payload?.data?.attributes?.status,
+    payload?.payment?.status,
+    payload?.charge?.status,
+    payload?.notification?.event,
+    payload?.notification?.status,
+    payload?.notification?.resource?.status,
+    payload?.resource?.payment?.status,
+    payload?.resource?.payment_response?.status,
+  ];
 
-  const status = String(payload?.status || payload?.payment?.status || payload?.data?.status || payload?.notification?.status || "")
-    .toLowerCase();
+  return values.some((value) => {
+    if (!value) return false;
 
-  return (
-    event.includes("approved") ||
-    event.includes("paid") ||
-    event.includes("confirmed") ||
-    event.includes("settled") ||
-    status.includes("paid") ||
-    status.includes("approved") ||
-    status.includes("confirmed")
-  );
+    const normalized = String(value).toLowerCase();
+    return /(approved|paid|confirmed|settled|captured|completed|authorized)/.test(
+      normalized,
+    );
+  });
 };
 
 export async function POST(request) {
@@ -83,29 +129,61 @@ export async function POST(request) {
       request.headers.get("x-signature") ||
       "";
 
-    if (!verifySignature(rawBody, signature)) {
-      return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
+    let payload = {};
+
+    try {
+      payload = JSON.parse(rawBody || "{}");
+    } catch {
+      payload = {};
     }
 
-    const payload = JSON.parse(rawBody || "{}" );
-    const orderId = extractOrderId(payload);
+    const orderId = extractOrderId(payload, rawBody);
+    const paymentApproved = isPaymentApproved(payload);
+
+    console.log("📥 Webhook PagBank recebido", {
+      orderId,
+      paymentApproved,
+      signaturePresent: Boolean(signature),
+      bodyPreview: rawBody.slice(0, 500),
+    });
+
+    if (!verifySignature(rawBody, signature)) {
+      return NextResponse.json(
+        { error: "Assinatura inválida" },
+        { status: 401 },
+      );
+    }
 
     if (!orderId) {
-      return NextResponse.json({ received: true, ignored: true, reason: "order_id_not_found" });
+      return NextResponse.json({
+        received: true,
+        ignored: true,
+        reason: "order_id_not_found",
+      });
     }
 
-    if (!isPaymentApproved(payload)) {
-      return NextResponse.json({ received: true, ignored: true, reason: "event_not_approved" });
+    if (!paymentApproved) {
+      return NextResponse.json({
+        received: true,
+        ignored: true,
+        reason: "event_not_approved",
+      });
     }
 
     client = await pool.connect();
     await client.query("BEGIN");
 
-    const orderCheck = await client.query("SELECT id FROM orders WHERE id = $1", [orderId]);
+    const orderCheck = await client.query(
+      "SELECT id FROM orders WHERE id = $1",
+      [orderId],
+    );
 
     if (orderCheck.rows.length === 0) {
       await client.query("ROLLBACK");
-      return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Pedido não encontrado" },
+        { status: 404 },
+      );
     }
 
     await client.query(
@@ -126,7 +204,10 @@ export async function POST(request) {
     }
 
     console.error("Erro no webhook do PagBank:", error);
-    return NextResponse.json({ error: error.message || "Erro ao processar webhook" }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Erro ao processar webhook" },
+      { status: 500 },
+    );
   } finally {
     if (client) {
       client.release();
