@@ -2,7 +2,7 @@
 
 // Função auxiliar para pegar o token
 const getToken = () => {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     return localStorage.getItem("@token");
   }
   return null;
@@ -12,7 +12,7 @@ const getToken = () => {
 const getHeaders = () => {
   const token = getToken();
   return {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...(token && { Authorization: `Bearer ${token}` }),
   };
 };
@@ -59,23 +59,48 @@ export async function fetchOrdersByStatus(status) {
 export async function updateOrderStatus(orderId, status) {
   try {
     console.log(`🔄 Atualizando pedido ${orderId} para status: ${status}`);
-    
+
     const response = await fetch(`/api/orders/${orderId}/status`, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: getHeaders(),
-      body: JSON.stringify({ status }), 
+      body: JSON.stringify({ status }),
     });
 
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || "Erro ao atualizar status");
     }
-    
+
     const data = await response.json();
     console.log(`Status do pedido ${orderId} atualizado:`, data);
     return data;
   } catch (error) {
     console.error(" Erro em updateOrderStatus:", error);
+    throw error;
+  }
+}
+
+// Retificar pesos dos itens do pedido
+export async function updateOrderRealWeight(orderId, items) {
+  try {
+    console.log(`⚖️ Retificando pesos do pedido ${orderId}:`, items);
+
+    const response = await fetch(`/api/orders/${orderId}/realPeso`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({ items }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Erro ao retificar pesos");
+    }
+
+    console.log(`Pesos do pedido ${orderId} atualizados:`, data);
+    return data;
+  } catch (error) {
+    console.error("Erro em updateOrderRealWeight:", error);
     throw error;
   }
 }
@@ -103,10 +128,10 @@ export async function fetchOrderDetails(orderId) {
 export async function assignDeliveryPerson(orderId, deliveryPersonId) {
   try {
     const response = await fetch(`/api/orders/${orderId}/assign`, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: getHeaders(),
       body: JSON.stringify({
-        entregador_id: deliveryPersonId
+        entregador_id: deliveryPersonId,
       }),
     });
 
@@ -114,7 +139,10 @@ export async function assignDeliveryPerson(orderId, deliveryPersonId) {
       throw new Error("Erro ao atribuir entregador");
     }
     const data = await response.json();
-    console.log(`Entregador ${deliveryPersonId} atribuído ao pedido ${orderId}:`, data);
+    console.log(
+      `Entregador ${deliveryPersonId} atribuído ao pedido ${orderId}:`,
+      data,
+    );
     return data;
   } catch (error) {
     console.error("Erro em assignDeliveryPerson:", error);
@@ -145,7 +173,7 @@ export async function fetchAvailableDeliveryPersons() {
 export async function registerDeliveryRoute(orderId, routeData) {
   try {
     const response = await fetch(`/api/orders/${orderId}/route`, {
-      method: 'POST',
+      method: "POST",
       headers: getHeaders(),
       body: JSON.stringify(routeData),
     });
@@ -185,11 +213,11 @@ export async function fetchDeliveryHistory(deliveryPersonId) {
 export async function cancelDelivery(orderId, motivo) {
   try {
     const response = await fetch(`/api/orders/${orderId}/cancel`, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: getHeaders(),
       body: JSON.stringify({
         motivo_cancelamento: motivo,
-        cancelado_em: new Date().toISOString()
+        cancelado_em: new Date().toISOString(),
       }),
     });
 
@@ -209,12 +237,12 @@ export async function cancelDelivery(orderId, motivo) {
 export async function updateDeliveryLocation(orderId, latitude, longitude) {
   try {
     const response = await fetch(`/api/orders/${orderId}/location`, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: getHeaders(),
       body: JSON.stringify({
         latitude,
         longitude,
-        atualizado_em: new Date().toISOString()
+        atualizado_em: new Date().toISOString(),
       }),
     });
 
@@ -272,14 +300,14 @@ export async function fetchOrdersByDeliveryPerson(deliveryPersonId) {
 export async function confirmDelivery(orderId, proofData) {
   try {
     const formData = new FormData();
-    formData.append('orderId', orderId);
-    formData.append('comprovante', proofData.comprovante);
-    formData.append('observacoes', proofData.observacoes || '');
-    formData.append('data_entrega', new Date().toISOString());
+    formData.append("orderId", orderId);
+    formData.append("comprovante", proofData.comprovante);
+    formData.append("observacoes", proofData.observacoes || "");
+    formData.append("data_entrega", new Date().toISOString());
 
     const token = getToken();
     const response = await fetch(`/api/orders/${orderId}/confirm`, {
-      method: 'POST',
+      method: "POST",
       headers: {
         ...(token && { Authorization: `Bearer ${token}` }),
       },

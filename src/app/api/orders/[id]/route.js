@@ -9,7 +9,8 @@ export async function GET(request, { params }) {
     const { id } = await params;
     client = await pool.connect();
 
-    const result = await client.query(`
+    const result = await client.query(
+      `
       SELECT
         o.id AS order_id,
         o.status,
@@ -31,26 +32,32 @@ export async function GET(request, { params }) {
         o.shipping_zip AS cep,
         o.shipping_bairro,
         
+        oi.id AS item_id,
+        oi.product_id,
         oi.product_name,
         oi.quantity,
-        oi.unit_price
+        oi.unit_price,
+        oi.actual_weight AS peso_real,
+        oi.sold_by_weight
 
       FROM orders o
       INNER JOIN order_items oi
         ON oi.order_id = o.id
       WHERE o.id = $1
       ORDER BY oi.id ASC
-    `, [id]);
+    `,
+      [id],
+    );
 
     if (result.rows.length === 0) {
       return NextResponse.json(
         { error: "Pedido não encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     const firstRow = result.rows[0];
-    
+
     const pedido = {
       id: firstRow.order_id,
       status_pedido: firstRow.status,
@@ -58,33 +65,36 @@ export async function GET(request, { params }) {
       created_at: firstRow.created_at,
       updated_at: firstRow.updated_at,
       shipping_frete: Number(firstRow.shipping_frete) || 0,
-      
-      cliente_nome: firstRow.cliente_nome || 'Não informado',
-      cliente_telefone: firstRow.cliente_telefone || '',
-      cliente_cpf: firstRow.cliente_cpf || '',
-      
-      cliente_endereco: firstRow.endereco || '',
-      cliente_numero: firstRow.numero || '',
-      cliente_complemento: firstRow.complemento || '',
-      cliente_bairro: firstRow.bairro || '',
-      cliente_cidade: firstRow.cidade || '',
-      cliente_estado: firstRow.estado || 'DF',
-      cliente_cep: firstRow.cep || '',
-      
-      itens: result.rows.map(row => ({
+
+      cliente_nome: firstRow.cliente_nome || "Não informado",
+      cliente_telefone: firstRow.cliente_telefone || "",
+      cliente_cpf: firstRow.cliente_cpf || "",
+
+      cliente_endereco: firstRow.endereco || "",
+      cliente_numero: firstRow.numero || "",
+      cliente_complemento: firstRow.complemento || "",
+      cliente_bairro: firstRow.bairro || "",
+      cliente_cidade: firstRow.cidade || "",
+      cliente_estado: firstRow.estado || "DF",
+      cliente_cep: firstRow.cep || "",
+
+      itens: result.rows.map((row) => ({
+        id: row.item_id,
+        product_id: row.product_id,
         nome: row.product_name,
-        quantidade: row.quantity,
-        preco: Number(row.unit_price),
-      }))
+        quantidade: Number(row.quantity) || 0,
+        preco: Number(row.unit_price) || 0,
+        peso_real: row.peso_real != null ? Number(row.peso_real) : null,
+        sold_by_weight: row.sold_by_weight || false,
+      })),
     };
 
     return NextResponse.json(pedido);
-
   } catch (error) {
     console.error("❌ Erro ao buscar pedido:", error);
     return NextResponse.json(
       { error: "Erro ao buscar pedido" },
-      { status: 500 }
+      { status: 500 },
     );
   } finally {
     if (client) client.release();

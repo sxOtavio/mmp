@@ -1,146 +1,62 @@
-'use client';
+// src/app/deliveryPage/page.jsx
+"use client";
 
-import { useState } from 'react';
-import { useDelivery } from '@/hooks/useDelivery';
-
-// FUNÇÃO PRINCIPAL - REUTILIZA A MESMA ABA DO WHATSAPP
-const abrirWhatsApp = (telefone, mensagem) => {
-  const telefoneLimpo = telefone.replace(/\D/g, '');
-  const telefoneFormatado = `55${telefoneLimpo}`;
-  const mensagemCodificada = encodeURIComponent(mensagem);
-  const url = `https://wa.me/${telefoneFormatado}?text=${mensagemCodificada}`;
-  
-  // TENTA REUTILIZAR A ABA DO WHATSAPP
-  const whatsappWindow = window.open('', 'whatsapp_window');
-  
-  if (whatsappWindow && !whatsappWindow.closed) {
-    whatsappWindow.location.href = url;
-    whatsappWindow.focus();
-  } else {
-    window.open(url, 'whatsapp_window');
-  }
-};
-
-// MENSAGEM DE AVISO DE PESO
-const gerarMensagemAvisoPeso = (pedido, itensPorPeso) => {
-  let mensagem = `🛒 *Pedido #${pedido.id} - Confirmação de Peso*\n\n`;
-  mensagem += `Olá *${pedido.cliente_nome}*, seu pedido está sendo separado! 🙏\n\n`;
-  mensagem += `📦 *Produtos que serão pesados:*\n`;
-  itensPorPeso.forEach(item => {
-    const peso = item.quantidade || 0;
-    mensagem += `\n⚖️ *${item.nome}*:\n`;
-    mensagem += `   Peso solicitado: ${peso.toFixed(2)}kg\n`;
-    mensagem += `   ⚠️ Pode sofrer variação de até ±5%\n`;
-  });
-  const totalEstimado = itensPorPeso.reduce((acc, item) => {
-    return acc + (item.preco * (item.quantidade || 0));
-  }, 0);
-  mensagem += `\n💰 *Valor estimado:* R$ ${totalEstimado.toFixed(2)}\n`;
-  mensagem += `\n📌 *Observação:*\n`;
-  mensagem += `Os produtos vendidos por peso são pesados no momento da separação.\n`;
-  mensagem += `O valor final pode variar ligeiramente.\n\n`;
-  mensagem += `💬 *Dúvidas?* Responda esta mensagem!\n`;
-  mensagem += `Agradecemos pela compreensão! 🙏`;
-  return mensagem;
-};
-
-// MENSAGEM DE CONFIRMAÇÃO
-const gerarMensagemConfirmacao = (pedido, itensConfirmados) => {
-  let mensagem = `✅ *Pedido #${pedido.id} CONFIRMADO!*\n\n`;
-  mensagem += `Olá *${pedido.cliente_nome}*, seu pedido foi separado e confirmado! 🎉\n\n`;
-  mensagem += `📦 *Produtos confirmados:*\n`;
-  itensConfirmados.forEach(item => {
-    const peso = item.peso_real || item.quantidade || 0;
-    mensagem += `\n⚖️ *${item.nome}*: ${peso.toFixed(2)}kg\n`;
-  });
-  const totalFinal = itensConfirmados.reduce((acc, item) => {
-    return acc + (item.preco * (item.peso_real || item.quantidade || 0));
-  }, 0);
-  mensagem += `\n💰 *Total final:* R$ ${totalFinal.toFixed(2)}\n\n`;
-  mensagem += `💳 *Agora é só pagar!*\n`;
-  mensagem += `Acesse o link para finalizar:\n`;
-  mensagem += `${window.location.origin}/pagamento/${pedido.id}\n\n`;
-  mensagem += `Obrigado por comprar conosco! 🙏`;
-  return mensagem;
-};
-
-// Mapeamento de status 
-const getStatusConfig = (status) => {
-  const configs = {
-    pending: {
-      label: 'Aguardando',
-      icon: '⏰',
-      cor: 'amber',
-      bg: 'bg-amber-50',
-      text: 'text-black',
-      border: 'border-amber-200',
-      acao: 'Iniciar Separação',
-      proxStatus: 'preparing',
-      descricao: 'Pedido aguardando separação'
-    },
-    preparing: {
-      label: 'Separando',
-      icon: '📦',
-      cor: 'blue',
-      bg: 'bg-blue-50',
-      text: 'text-black',
-      border: 'border-blue-200',
-      acao: 'Sair para Entrega',
-      proxStatus: 'out_for_delivery',
-      descricao: 'Produtos sendo separados'
-    },
-    out_for_delivery: {
-      label: 'Em Rota',
-      icon: '🛵',
-      cor: 'purple',
-      bg: 'bg-purple-50',
-      text: 'text-black',
-      border: 'border-purple-200',
-      acao: 'Finalizar Entrega',
-      proxStatus: 'delivered',
-      descricao: 'Entregador a caminho'
-    },
-    delivered: {
-      label: 'Entregue',
-      icon: '✅',
-      cor: 'emerald',
-      bg: 'bg-emerald-50',
-      text: 'text-black',
-      border: 'border-emerald-200',
-      acao: null,
-      proxStatus: null,
-      descricao: 'Pedido finalizado'
-    },
-    cancelled: {
-      label: 'Cancelado',
-      icon: '❌',
-      cor: 'red',
-      bg: 'bg-red-50',
-      text: 'text-black',
-      border: 'border-red-200',
-      acao: null,
-      proxStatus: null,
-      descricao: 'Pedido cancelado'
-    }
-  };
-  return configs[status] || configs.pending;
-};
+import { useEffect, useRef, useState } from "react";
+import { useDelivery } from "@/hooks/useDelivery";
+import { updateOrderRealWeight } from "@/services/deliveryServices";
+import { DeliveryMetricCard } from "@/components/delivery/DeliveryMetricCard";
+import { DeliveryOrderCard } from "@/components/delivery/DeliveryOrderCard";
+import { DeliveryOrderModal } from "@/components/delivery/DeliveryOrderModal";
+import {
+  getStatusConfig,
+  abrirWhatsApp,
+  gerarMensagemAvisoPeso,
+  gerarMensagemConfirmacao,
+} from "@/lib/deliveryUtils";
 
 export default function DeliveryPage() {
-  const {
-    orders: pedidos,
-    loading,
-    error,
-    updateOrderStatus,
-  } = useDelivery();
+  const { orders: pedidos, loading, error, updateOrderStatus } = useDelivery();
 
-  const [filtro, setFiltro] = useState('todos');
-  const [mostrarNotificacao, setMostrarNotificacao] = useState(false);
-  const [mensagemNotificacao, setMensagemNotificacao] = useState('');
+  const [filtro, setFiltro] = useState("todos");
   const [pedidoSelecionado, setPedidoSelecionado] = useState(null);
-  const [ordem, setOrdem] = useState('recente');
+  const [ordem, setOrdem] = useState("recente");
   const [pesosRetificados, setPesosRetificados] = useState({});
+  const [enviando, setEnviando] = useState(false);
+  const [mostrarNotificacao, setMostrarNotificacao] = useState(false);
+  const [mensagemNotificacao, setMensagemNotificacao] = useState("");
+  const pedidosAnterioresRef = useRef([]);
 
+  useEffect(() => {
+    if (!pedidos?.length) {
+      pedidosAnterioresRef.current = pedidos;
+      return;
+    }
+
+    const pedidoConfirmado = pedidos.find((pedido) => {
+      const pedidoAnterior = pedidosAnterioresRef.current.find(
+        (anterior) => anterior.id === pedido.id,
+      );
+
+      if (!pedidoAnterior) return false;
+
+      const statusAnterior = pedidoAnterior.status_pedido || pedidoAnterior.status;
+      const statusAtual = pedido.status_pedido || pedido.status;
+
+      return statusAnterior === "waiting_confirmation" && statusAtual === "preparing";
+    });
+
+    if (pedidoConfirmado) {
+      setMensagemNotificacao(
+        `💳 Pagamento confirmado para o pedido #${pedidoConfirmado.id}. O separador já pode seguir com a montagem.`,
+      );
+      setMostrarNotificacao(true);
+      window.setTimeout(() => setMostrarNotificacao(false), 5000);
+    }
+
+    pedidosAnterioresRef.current = pedidos;
+  }, [pedidos]);
+
+  // 🔥 CONTAR POR STATUS
   const contarPorStatus = (pedidosList) => {
     const contagem = {
       total: pedidosList.length,
@@ -148,10 +64,12 @@ export default function DeliveryPage() {
       preparing: 0,
       out_for_delivery: 0,
       delivered: 0,
-      cancelled: 0
+      cancelled: 0,
+      weight_revised: 0,
+      waiting_confirmation: 0,
     };
 
-    pedidosList.forEach(pedido => {
+    pedidosList.forEach((pedido) => {
       const status = pedido.status_pedido || pedido.status;
       if (contagem.hasOwnProperty(status)) {
         contagem[status]++;
@@ -163,156 +81,32 @@ export default function DeliveryPage() {
 
   const contagens = contarPorStatus(pedidos);
 
+  // 🔥 FILTRAR PEDIDOS
   const filtrarPedidos = (pedidosList, filtro) => {
-    if (filtro === 'todos') {
+    if (filtro === "todos") {
       return pedidosList;
     }
-    return pedidosList.filter(pedido => {
+    return pedidosList.filter((pedido) => {
       const status = pedido.status_pedido || pedido.status;
       return status === filtro;
     });
   };
 
-  const atualizarStatus = async (pedidoId, novoStatus) => {
-    const result = await updateOrderStatus(pedidoId, novoStatus);
-    
-    if (result) {
-      const mensagens = {
-        preparing: 'Pedido encaminhado para separação',
-        out_for_delivery: 'Pedido saiu para entrega',
-        delivered: 'Pedido entregue com sucesso!'
-      };
-      
-      setMensagemNotificacao(mensagens[novoStatus] || 'Status atualizado!');
-      setMostrarNotificacao(true);
-      setTimeout(() => setMostrarNotificacao(false), 3000);
-      setPedidoSelecionado(null);
-    } else {
-      setMensagemNotificacao('Erro ao atualizar status');
-      setMostrarNotificacao(true);
-      setTimeout(() => setMostrarNotificacao(false), 3000);
-    }
-  };
-
-  const abrirDetalhes = (pedido) => {
-    setPedidoSelecionado(pedido);
-    setPesosRetificados({});
-  };
-
-  // BOTÃO 1: AVISAR SOBRE PESO
-  const abrirWhatsAppAvisoPeso = (pedido) => {
-    const itensPorPeso = pedido.itens?.filter(item => item.sold_by_weight === true) || [];
-    
-    if (itensPorPeso.length === 0) {
-      alert('⚠️ Este pedido não tem produtos por peso!');
-      return;
-    }
-
-    if (!pedido.cliente_telefone) {
-      alert('⚠️ Cliente não tem telefone cadastrado!');
-      return;
-    }
-
-    const mensagem = gerarMensagemAvisoPeso(pedido, itensPorPeso);
-    abrirWhatsApp(pedido.cliente_telefone, mensagem);
-  };
-
-  // BOTÃO 2: FALAR COM CLIENTE
-  const abrirWhatsAppCliente = (pedido) => {
-    if (!pedido.cliente_telefone) {
-      alert('⚠️ Cliente não tem telefone cadastrado!');
-      return;
-    }
-
-    const mensagem = `Olá *${pedido.cliente_nome}*! 👋\n\nSeu pedido #${pedido.id} está sendo separado.`;
-    abrirWhatsApp(pedido.cliente_telefone, mensagem);
-  };
-
-  const handlePesoChange = (itemId, novoPeso) => {
-    setPesosRetificados(prev => ({
-      ...prev,
-      [itemId]: parseFloat(novoPeso) || 0
-    }));
-  };
-
-  // BOTÃO 3: APENAS RETIFICAR PESOS (sem enviar mensagem)
-  const retificarPesos = async (pedido) => {
-    const itensPorPeso = pedido.itens?.filter(item => item.sold_by_weight === true) || [];
-    
-    if (itensPorPeso.length === 0) {
-      alert('⚠️ Este pedido não tem produtos por peso!');
-      return;
-    }
-
-    const todosRetificados = itensPorPeso.every(item => 
-      pesosRetificados[item.id] !== undefined && pesosRetificados[item.id] > 0
-    );
-
-    if (!todosRetificados) {
-      alert('⚠️ Retifique o peso de todos os produtos por peso!');
-      return;
-    }
-
-    try {
-      const itensComPesoFinal = itensPorPeso.map(item => ({
-        id: item.id,
-        peso_real: pesosRetificados[item.id]
-      }));
-
-      const response = await fetch(`/api/pedido/${pedido.id}/atualizar-pesos`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ itens: itensComPesoFinal }),
-      });
-
-      if (response.ok) {
-        setMensagemNotificacao('✅ Pesos retificados com sucesso!');
-        setMostrarNotificacao(true);
-        setTimeout(() => setMostrarNotificacao(false), 3000);
-        setPedidoSelecionado(null);
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Erro ao retificar pesos:', error);
-      alert('❌ Erro ao salvar os novos pesos');
-    }
-  };
-
-  // BOTÃO 4: ENVIAR CONFIRMAÇÃO (com os pesos já retificados)
-  const enviarConfirmacao = (pedido) => {
-    const itensPorPeso = pedido.itens?.filter(item => item.sold_by_weight === true) || [];
-    
-    if (itensPorPeso.length === 0) {
-      alert('⚠️ Este pedido não tem produtos por peso!');
-      return;
-    }
-
-    const todosRetificados = itensPorPeso.every(item => 
-      item.peso_real !== undefined && item.peso_real !== null && item.peso_real > 0
-    );
-
-    if (!todosRetificados) {
-      alert('⚠️ Retifique os pesos antes de enviar a confirmação!');
-      return;
-    }
-
-    const mensagem = gerarMensagemConfirmacao(pedido, itensPorPeso);
-    abrirWhatsApp(pedido.cliente_telefone, mensagem);
-    setPedidoSelecionado(null);
-  };
-
+  // 🔥 ORDENAR PEDIDOS
   const ordenarPedidos = (pedidosList) => {
     const sorted = [...pedidosList];
     switch (ordem) {
-      case 'recente':
-        return sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      case 'antigo':
-        return sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-      case 'maior':
+      case "recente":
+        return sorted.sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at),
+        );
+      case "antigo":
+        return sorted.sort(
+          (a, b) => new Date(a.created_at) - new Date(b.created_at),
+        );
+      case "maior":
         return sorted.sort((a, b) => b.total - a.total);
-      case 'menor':
+      case "menor":
         return sorted.sort((a, b) => a.total - b.total);
       default:
         return sorted;
@@ -321,17 +115,215 @@ export default function DeliveryPage() {
 
   const pedidosFiltrados = ordenarPedidos(filtrarPedidos(pedidos, filtro));
 
+  // 🔥 FORMATAR DATA
   const formatarData = (dataISO) => {
-    if (!dataISO) return 'Data não disponível';
+    if (!dataISO) return "Data não disponível";
     const data = new Date(dataISO);
     const agora = new Date();
     const diffMinutos = Math.abs(Math.floor((agora - data) / 60000));
 
-    if (diffMinutos < 1) return 'Agora mesmo';
+    if (diffMinutos < 1) return "Agora mesmo";
     if (diffMinutos < 60) return `${diffMinutos} min atrás`;
-    if (diffMinutos < 120) return '1 hora atrás';
-    if (diffMinutos < 1440) return `${Math.floor(diffMinutos / 60)} horas atrás`;
+    if (diffMinutos < 120) return "1 hora atrás";
+    if (diffMinutos < 1440)
+      return `${Math.floor(diffMinutos / 60)} horas atrás`;
     return data.toLocaleDateString();
+  };
+
+  // 🔥 ATUALIZAR STATUS - FUNÇÃO QUE SERÁ PASSADA PARA O CARD
+  const handleUpdateStatus = async (pedidoId, novoStatus) => {
+    const result = await updateOrderStatus(pedidoId, novoStatus);
+
+    if (result) {
+      const mensagens = {
+        preparing: "Pedido encaminhado para separação",
+        out_for_delivery: "Pedido saiu para entrega",
+        delivered: "Pedido entregue com sucesso!",
+        waiting_confirmation: "Pedido confirmado e pagamento liberado!",
+      };
+
+      setMensagemNotificacao(mensagens[novoStatus] || "Status atualizado!");
+      setMostrarNotificacao(true);
+      setTimeout(() => setMostrarNotificacao(false), 3000);
+
+      if (novoStatus === "waiting_confirmation" && result.payment_link) {
+        window.open(result.payment_link, "_blank", "noopener,noreferrer");
+      }
+
+      setPedidoSelecionado(null);
+    } else {
+      setMensagemNotificacao("Erro ao atualizar status");
+      setMostrarNotificacao(true);
+      setTimeout(() => setMostrarNotificacao(false), 3000);
+    }
+  };
+
+  // 🔥 ABRIR DETALHES
+  const abrirDetalhes = (pedido) => {
+    setPedidoSelecionado(pedido);
+    setPesosRetificados({});
+  };
+
+  //  Usa itemKey como identificador único
+  const handlePesoChange = (itemKey, novoPeso) => {
+    console.log(`📝 handlePesoChange: ${itemKey} = ${novoPeso}`);
+    setPesosRetificados((prev) => {
+      const novoEstado = {
+        ...prev,
+        [itemKey]: novoPeso,
+      };
+      console.log("📊 Novo estado:", novoEstado);
+      return novoEstado;
+    });
+  };
+
+  // 🔥 BOTÃO 1: AVISAR SOBRE PESO
+  const abrirWhatsAppAvisoPeso = (pedido) => {
+    const itensPorPeso =
+      pedido.itens?.filter((item) => item.sold_by_weight === true) || [];
+
+    if (itensPorPeso.length === 0) {
+      alert("⚠️ Este pedido não tem produtos por peso!");
+      return;
+    }
+
+    if (!pedido.cliente_telefone) {
+      alert("⚠️ Cliente não tem telefone cadastrado!");
+      return;
+    }
+
+    const mensagem = gerarMensagemAvisoPeso(pedido, itensPorPeso);
+    abrirWhatsApp(pedido.cliente_telefone, mensagem);
+  };
+
+  // 🔥 BOTÃO 2: FALAR COM CLIENTE
+  const abrirWhatsAppCliente = (pedido) => {
+    if (!pedido.cliente_telefone) {
+      alert("⚠️ Cliente não tem telefone cadastrado!");
+      return;
+    }
+
+    const mensagem = `Olá *${pedido.cliente_nome}*! 👋\n\nSeu pedido #${pedido.id} está sendo separado.`;
+    abrirWhatsApp(pedido.cliente_telefone, mensagem);
+  };
+
+  // 🔥 BOTÃO 3: RETIFICAR PESOS - CORRIGIDO
+  // src/app/deliveryPage/page.jsx
+
+  const retificarPesos = async (order) => {
+    const orderItems = order.itens || order.items || [];
+    const weightItems =
+      orderItems.filter((item) => item.sold_by_weight === true) || [];
+
+    console.log("📦 Itens por peso:", weightItems);
+    console.log("📊 Pesos retificados (estado):", pesosRetificados);
+
+    if (weightItems.length === 0) {
+      alert("⚠️ Este pedido não tem produtos por peso!");
+      return;
+    }
+
+    const allFilled = weightItems.every((item) => {
+      // 🔥 USA O ID DO ITEM (que agora vem da API)
+      const itemKey = item.id || `item-${orderItems.indexOf(item)}`;
+      const value = pesosRetificados[itemKey];
+      return value !== undefined && value > 0;
+    });
+
+    if (!allFilled) {
+      alert("⚠️ Preencha o peso real de todos os produtos por peso!");
+      return;
+    }
+
+    setEnviando(true);
+
+    try {
+      const itemsWithWeight = weightItems.map((item) => {
+        // 🔥 USA O ID DO ITEM (agora disponível)
+        const itemKey = item.id || `item-${orderItems.indexOf(item)}`;
+        return {
+          id: item.id, // ← AGORA VAI TER UM ID VÁLIDO
+          product_id: item.product_id || item.id,
+          actual_weight: pesosRetificados[itemKey],
+        };
+      });
+
+      console.log("📦 Enviando para API:", {
+        orderId: order.id,
+        items: itemsWithWeight,
+      });
+
+      const data = await updateOrderRealWeight(order.id, itemsWithWeight);
+
+      if (data?.success) {
+        setMensagemNotificacao("✅ Pesos retificados com sucesso!");
+        setMostrarNotificacao(true);
+        setTimeout(() => setMostrarNotificacao(false), 3000);
+
+        await updateOrderStatus(order.id, "weight_revised");
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+
+        setPedidoSelecionado(null);
+      } else {
+        console.error("Erro da API:", data);
+        throw new Error(data?.error || "Erro ao salvar");
+      }
+    } catch (error) {
+      console.error("Erro ao retificar pesos:", error);
+      alert("❌ Erro ao salvar os novos pesos: " + error.message);
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  // 🔥 BOTÃO 4: ENVIAR CONFIRMAÇÃO
+  const enviarConfirmacao = async (pedido) => {
+    const itensPorPeso =
+      pedido.itens?.filter((item) => item.sold_by_weight === true) || [];
+
+    if (itensPorPeso.length === 0) {
+      alert("⚠️ Este pedido não tem produtos por peso!");
+      return;
+    }
+
+    const todosRetificados = itensPorPeso.every(
+      (item) =>
+        item.peso_real !== undefined &&
+        item.peso_real !== null &&
+        item.peso_real > 0,
+    );
+
+    if (!todosRetificados) {
+      alert("⚠️ Retifique os pesos antes de enviar a confirmação!");
+      return;
+    }
+
+    setEnviando(true);
+
+    try {
+      const result = await updateOrderStatus(pedido.id, "waiting_confirmation");
+
+      const mensagem = gerarMensagemConfirmacao(pedido, {
+        paymentLink: result?.payment_link,
+        totalFinal: result?.order?.total ?? pedido.total,
+      });
+
+      abrirWhatsApp(pedido.cliente_telefone, mensagem);
+
+      setMensagemNotificacao("✅ Mensagem de confirmação enviada!");
+      setMostrarNotificacao(true);
+      setTimeout(() => setMostrarNotificacao(false), 3000);
+
+      setPedidoSelecionado(null);
+    } catch (error) {
+      console.error("Erro ao enviar confirmação:", error);
+      alert("❌ Erro ao enviar mensagem");
+    } finally {
+      setEnviando(false);
+    }
   };
 
   // Mostrar loading
@@ -352,9 +344,11 @@ export default function DeliveryPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center bg-white p-8 rounded-xl shadow-lg max-w-md">
           <div className="text-6xl mb-4">❌</div>
-          <h2 className="text-black text-xl font-bold mb-2">Erro ao carregar</h2>
+          <h2 className="text-black text-xl font-bold mb-2">
+            Erro ao carregar
+          </h2>
           <p className="text-black">{error}</p>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
           >
@@ -371,13 +365,15 @@ export default function DeliveryPage() {
       {mostrarNotificacao && (
         <div className="fixed top-4 right-4 z-50 animate-slide-in">
           <div className="bg-emerald-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
-            <span className="text-white font-medium">{mensagemNotificacao}</span>
+            <span className="text-white font-medium">
+              {mensagemNotificacao}
+            </span>
           </div>
         </div>
       )}
 
       {/* Loading overlay para ações */}
-      {loading && (
+      {enviando && (
         <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-40">
           <div className="bg-white p-4 rounded-lg shadow-lg">
             <p className="text-black">Processando...</p>
@@ -385,183 +381,21 @@ export default function DeliveryPage() {
         </div>
       )}
 
-      {/* Modal de Detalhes */}
-      {pedidoSelecionado && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-black">Pedido #{pedidoSelecionado.id}</h2>
-              <button onClick={() => setPedidoSelecionado(null)} className="text-2xl text-black hover:text-gray-500">&times;</button>
-            </div>
-            <div className="p-6 space-y-6">
-              {/* CLIENTE */}
-              <div className="p-4 rounded-lg bg-gray-50">
-                <h3 className="font-semibold mb-2 text-lg text-black">👤 Cliente</h3>
-                <p className="text-black">
-                  <strong>Nome:</strong> {pedidoSelecionado.cliente_nome || 'Não informado'}
-                </p>
-                <p className="text-black">
-                  <strong>Telefone:</strong> {pedidoSelecionado.cliente_telefone || 'Não informado'}
-                </p>
-                <p className="text-black">
-                  <strong>Endereço:</strong> {pedidoSelecionado.cliente_endereco || ''} 
-                  {pedidoSelecionado.cliente_numero ? `, ${pedidoSelecionado.cliente_numero}` : ''}
-                  {pedidoSelecionado.cliente_complemento ? ` - ${pedidoSelecionado.cliente_complemento}` : ''}
-                </p>
-                <p className="text-black">
-                  <strong>Bairro:</strong> {pedidoSelecionado.cliente_bairro || 'Não informado'}
-                </p>
-                <p className="text-black">
-                  <strong>Cidade:</strong> {pedidoSelecionado.cliente_cidade || 'Não informado'}
-                </p>
-                <p className="text-black">
-                  <strong>Frete:</strong> R$ {pedidoSelecionado.shipping_frete?.toFixed(2) || '0.00'}
-                </p>
-              </div>
-
-              {/* Itens */}
-              <div className="p-4 rounded-lg bg-gray-50">
-                <h3 className="font-semibold mb-3 text-lg text-black">🛒 Itens do Pedido</h3>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {pedidoSelecionado.itens && pedidoSelecionado.itens.length > 0 ? (
-                    pedidoSelecionado.itens.map((item, idx) => {
-                      const isSoldByWeight = item.sold_by_weight === true;
-                      const pesoRetificado = pesosRetificados[item.id] || item.quantidade || 0;
-                      
-                      return (
-                        <div key={idx} className="flex flex-col py-2 border-b border-gray-200 last:border-0">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <span className="font-medium text-black">{item.quantidade}x</span>
-                              <span className="ml-2 text-black">{item.nome}</span>
-                              {isSoldByWeight && (
-                                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                                  ⚖️ Por peso
-                                </span>
-                              )}
-                              {item.peso_real && (
-                                <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                                  ✏️ Retificado: {item.peso_real.toFixed(2)}kg
-                                </span>
-                              )}
-                            </div>
-                            <span className="font-semibold text-black">R$ {(item.preco * (item.peso_real || item.quantidade)).toFixed(2)}</span>
-                          </div>
-                          
-                          {isSoldByWeight && (
-                            <div className="mt-2 flex items-center gap-3 pl-4">
-                              <input 
-                                type="number" 
-                                step="0.01"
-                                min="0.01"
-                                value={pesoRetificado}
-                                onChange={(e) => handlePesoChange(item.id, e.target.value)}
-                                placeholder="Peso real (kg)"
-                                className="w-28 px-2 py-1 border border-gray-300 rounded text-sm text-black focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                              />
-                              <span className="text-xs text-black">kg</span>
-                              <span className="text-xs text-black opacity-60">
-                                (original: {item.quantidade.toFixed(2)}kg)
-                              </span>
-                              {pesoRetificado !== item.quantidade && (
-                                <span className="text-xs text-blue-600 font-medium ml-auto">
-                                  ⚡ {((pesoRetificado - item.quantidade) * item.preco).toFixed(2)}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-black text-center py-4">Nenhum item encontrado</p>
-                  )}
-                </div>
-                
-                {/* 🔥 4 BOTÕES */}
-                <div className="mt-4 pt-3 border-t border-gray-200">
-                  <div className="flex flex-wrap gap-3">
-                    {pedidoSelecionado.itens?.some(item => item.sold_by_weight === true) && (
-                      <>
-                        <button
-                          onClick={() => abrirWhatsAppAvisoPeso(pedidoSelecionado)}
-                          className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition flex items-center gap-2 text-sm"
-                        >
-                          <span>📱</span>
-                          Avisar sobre peso
-                        </button>
-
-                        <button
-                          onClick={() => retificarPesos(pedidoSelecionado)}
-                          className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition flex items-center gap-2 text-sm"
-                        >
-                          <span>✏️</span>
-                          Retificar pesos
-                        </button>
-
-                        <button
-                          onClick={() => enviarConfirmacao(pedidoSelecionado)}
-                          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center gap-2 text-sm"
-                        >
-                          <span>✅</span>
-                          Enviar confirmação
-                        </button>
-                      </>
-                    )}
-                    
-                    <button
-                      onClick={() => abrirWhatsAppCliente(pedidoSelecionado)}
-                      className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition flex items-center gap-2 text-sm"
-                    >
-                      <span>💬</span>
-                      Falar com cliente
-                    </button>
-                  </div>
-                </div>
-
-                {/* SUBTOTAL + FRETE + TOTAL */}
-                <div className="mt-4 pt-3 border-t border-gray-200">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-black">Subtotal</span>
-                    <span className="text-black">R$ {(pedidoSelecionado.total - (pedidoSelecionado.shipping_frete || 0)).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-black">Frete</span>
-                    <span className="text-black">R$ {pedidoSelecionado.shipping_frete?.toFixed(2) || '0.00'}</span>
-                  </div>
-                  <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-300">
-                    <span className="font-bold text-lg text-black">Total</span>
-                    <span className="text-2xl font-bold text-emerald-600">R$ {(pedidoSelecionado.total || 0).toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Informações adicionais */}
-              <div className="p-4 rounded-lg bg-gray-50">
-                <h3 className="font-semibold mb-2 text-black">📋 Informações</h3>
-                <p className="text-black">
-                  <strong>Data do pedido:</strong> {pedidoSelecionado.created_at ? new Date(pedidoSelecionado.created_at).toLocaleString() : 'Não disponível'}
-                </p>
-                <p className="text-black">
-                  <strong>Status:</strong> {getStatusConfig(pedidoSelecionado.status_pedido || pedidoSelecionado.status).label}
-                </p>
-                <p className="text-black">
-                  <strong>Qtd. itens:</strong> {pedidoSelecionado.itens?.length || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Conteúdo Principal */}
       <div className="p-6 max-w-7xl mx-auto">
+        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-black">Painel do Entregador</h1>
-            <p className="mt-1 text-black">Gerencie as entregas do supermercado</p>
+            <h1 className="text-4xl font-bold text-black">
+              Painel do Entregador
+            </h1>
+            <p className="mt-1 text-black">
+              Gerencie as entregas do supermercado
+            </p>
             {pedidos.length > 0 && (
-              <p className="text-sm text-black mt-1">{pedidos.length} pedidos no total</p>
+              <p className="text-sm text-black mt-1">
+                {pedidos.length} pedidos no total
+              </p>
             )}
           </div>
           <div className="flex gap-2">
@@ -576,11 +410,36 @@ export default function DeliveryPage() {
 
         {/* Cards de métricas */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <MetricCard icon="📊" label="Total" value={pedidos.length} cor="gray" />
-          <MetricCard icon="⏰" label="Aguardando" value={contagens.pending || 0} cor="amber" />
-          <MetricCard icon="📦" label="Separando" value={contagens.preparing || 0} cor="blue" />
-          <MetricCard icon="🛵" label="Em Rota" value={contagens.out_for_delivery || 0} cor="purple" />
-          <MetricCard icon="✅" label="Entregues" value={contagens.delivered || 0} cor="emerald" />
+          <DeliveryMetricCard
+            icon="📊"
+            label="Total"
+            value={pedidos.length}
+            cor="gray"
+          />
+          <DeliveryMetricCard
+            icon="⏰"
+            label="Aguardando"
+            value={contagens.pending || 0}
+            cor="amber"
+          />
+          <DeliveryMetricCard
+            icon="📦"
+            label="Separando"
+            value={contagens.preparing || 0}
+            cor="blue"
+          />
+          <DeliveryMetricCard
+            icon="🛵"
+            label="Em Rota"
+            value={contagens.out_for_delivery || 0}
+            cor="purple"
+          />
+          <DeliveryMetricCard
+            icon="✅"
+            label="Entregues"
+            value={contagens.delivered || 0}
+            cor="emerald"
+          />
         </div>
 
         {/* Barra de filtros e ordenação */}
@@ -588,32 +447,37 @@ export default function DeliveryPage() {
           <div className="flex flex-col md:flex-row gap-4 justify-between">
             <div className="flex gap-2 flex-wrap">
               {[
-                { id: 'todos', label: 'Todos', icon: '📋' },
-                { id: 'pending', label: 'Aguardando', icon: '⏰' },
-                { id: 'preparing', label: 'Separando', icon: '📦' },
-                { id: 'out_for_delivery', label: 'Em Rota', icon: '🛵' },
-                { id: 'delivered', label: 'Entregues', icon: '✅' }
+                { id: "todos", label: "Todos", icon: "📋" },
+                { id: "pending", label: "Aguardando", icon: "⏰" },
+                { id: "preparing", label: "Separando", icon: "📦" },
+                { id: "out_for_delivery", label: "Em Rota", icon: "🛵" },
+                { id: "delivered", label: "Entregues", icon: "✅" },
               ].map((f) => (
                 <button
                   key={f.id}
                   onClick={() => setFiltro(f.id)}
                   className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-black ${
                     filtro === f.id
-                      ? 'bg-blue-500 text-white shadow-md'
-                      : 'bg-gray-100 text-black hover:bg-gray-200'
+                      ? "bg-blue-500 text-white shadow-md"
+                      : "bg-gray-100 text-black hover:bg-gray-200"
                   }`}
                 >
                   <span>{f.icon}</span>
                   <span>{f.label}</span>
-                  <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
-                    filtro === f.id ? 'bg-white text-blue-500' : 'bg-gray-300 text-black'
-                  }`}>
-                    {f.id === 'todos' ? pedidos.length : contagens[f.id] || 0}
+                  <span
+                    className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
+                      filtro === f.id
+                        ? "bg-white text-blue-500"
+                        : "bg-gray-300 text-black"
+                    }`}
+                  >
+                    {f.id === "todos" ? pedidos.length : contagens[f.id] || 0}
                   </span>
                 </button>
               ))}
             </div>
 
+            {/* Ordenação */}
             <select
               value={ordem}
               onChange={(e) => setOrdem(e.target.value)}
@@ -637,127 +501,48 @@ export default function DeliveryPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {pedidosFiltrados.map((pedido) => {
-              const statusPedido = pedido.status_pedido || pedido.status || 'pending';
+              const statusPedido =
+                pedido.status_pedido || pedido.status || "pending";
               const statusConfig = getStatusConfig(statusPedido);
-              const tempoPedido = formatarData(pedido.created_at || pedido.createdAt);
-              const hasWeightProducts = pedido.itens?.some(item => item.sold_by_weight === true);
+              const tempoPedido = formatarData(
+                pedido.created_at || pedido.createdAt,
+              );
+              const hasWeightProducts = pedido.itens?.some(
+                (item) => item.sold_by_weight === true,
+              );
+              const hasPesoReal = pedido.itens?.some((item) => item.peso_real);
 
               return (
-                <div
+                <DeliveryOrderCard
                   key={pedido.id}
-                  className={`group rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1 cursor-pointer bg-white ${statusConfig.border} border`}
+                  pedido={pedido}
+                  statusConfig={statusConfig}
+                  tempoPedido={tempoPedido}
+                  hasWeightProducts={hasWeightProducts}
+                  hasPesoReal={hasPesoReal}
                   onClick={() => abrirDetalhes(pedido)}
-                >
-                  {/* Header */}
-                  <div className={`${statusConfig.bg} px-4 py-3 border-b ${statusConfig.border}`}>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl">{statusConfig.icon}</span>
-                          <div>
-                            <p className="text-xs text-black opacity-75">Pedido</p>
-                            <h3 className="font-bold text-lg text-black">#{pedido.id}</h3>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusConfig.bg} text-black border ${statusConfig.border}`}>
-                          {statusConfig.label}
-                        </span>
-                        {hasWeightProducts && (
-                          <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
-                            ⚖️ Com peso
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* BODY */}
-                  <div className="p-4 space-y-3">
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1">
-                        <p className="font-semibold text-black">{pedido.cliente_nome || 'Cliente não informado'}</p>
-                        <p className="text-sm text-black opacity-75">{pedido.cliente_telefone || ''}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-black opacity-60">{tempoPedido}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2">
-                      <p className="text-sm text-black flex-1">
-                        {pedido.cliente_cidade || ''} 
-                        {pedido.cliente_bairro ? `, ${pedido.cliente_bairro}` : ''} 
-                        {pedido.cliente_endereco ? `, ${pedido.cliente_endereco}` : ''} 
-                        {pedido.cliente_numero ? `, ${pedido.cliente_numero}` : ''}
-                      </p>
-                    </div>
-
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1">
-                        <div className="space-y-1">
-                          {pedido.itens && pedido.itens.length > 0 ? (
-                            <>
-                              {pedido.itens.slice(0, 3).map((item, i) => (
-                                <p key={i} className="text-sm text-black flex items-center gap-1">
-                                  {item.quantidade}x {item.nome}
-                                  {item.sold_by_weight && (
-                                    <span className="text-xs text-green-600">⚖️</span>
-                                  )}
-                                </p>
-                              ))}
-                              {pedido.itens.length > 3 && (
-                                <p className="text-xs text-black opacity-60">+{pedido.itens.length - 3} itens</p>
-                              )}
-                            </>
-                          ) : (
-                            <p className="text-sm text-black opacity-60">Sem itens</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* TOTAL COM FRETE */}
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                      <span className="text-sm text-black opacity-75">Total com frete</span>
-                      <span className="text-xl font-bold text-emerald-600">
-                        R$ {(pedido.total || 0).toFixed(2)}
-                      </span>
-                    </div>
-
-                    {pedido.shipping_frete > 0 && (
-                      <div className="flex justify-end items-center text-xs text-black opacity-60">
-                        <span>Frete: R$ {pedido.shipping_frete.toFixed(2)}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action Button */}
-                  {statusConfig.acao && (
-                    <div className="p-4 pt-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          atualizarStatus(pedido.id, statusConfig.proxStatus);
-                        }}
-                        className="w-full py-2.5 rounded-lg text-white font-medium transition-all transform hover:scale-105 shadow-md"
-                        style={{
-                          backgroundColor: statusConfig.cor === 'amber' ? '#f59e0b' :
-                            statusConfig.cor === 'blue' ? '#3b82f6' :
-                              statusConfig.cor === 'purple' ? '#a855f7' : '#10b981'
-                        }}
-                      >
-                        {statusConfig.acao} →
-                      </button>
-                    </div>
-                  )}
-                </div>
+                  onUpdateStatus={handleUpdateStatus} // 🔥 PASSANDO A FUNÇÃO
+                />
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Modal */}
+      {pedidoSelecionado && (
+        <DeliveryOrderModal
+          pedido={pedidoSelecionado}
+          onClose={() => setPedidoSelecionado(null)}
+          pesosRetificados={pesosRetificados}
+          onPesoChange={handlePesoChange}
+          onRetificar={retificarPesos}
+          onEnviarConfirmacao={enviarConfirmacao}
+          onAvisarPeso={abrirWhatsAppAvisoPeso}
+          onFalarCliente={abrirWhatsAppCliente}
+          enviando={enviando}
+        />
+      )}
 
       <style>{`
         @keyframes slide-in {
@@ -774,30 +559,6 @@ export default function DeliveryPage() {
           animation: slide-in 0.3s ease-out;
         }
       `}</style>
-    </div>
-  );
-}
-
-// Componente MetricCard
-function MetricCard({ icon, label, value, cor }) {
-  const cores = {
-    gray: 'from-gray-50 to-gray-100',
-    amber: 'from-amber-50 to-amber-100',
-    blue: 'from-blue-50 to-blue-100',
-    purple: 'from-purple-50 to-purple-100',
-    emerald: 'from-emerald-50 to-emerald-100',
-    red: 'from-red-50 to-red-100'
-  };
-
-  return (
-    <div className={`bg-gradient-to-br ${cores[cor]} rounded-xl p-4 shadow-sm transition-all hover:shadow-md`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className={`text-2xl font-bold text-black`}>{value || 0}</p>
-          <p className={`text-xs font-medium text-black`}>{label}</p>
-        </div>
-        <div className="text-3xl opacity-80">{icon}</div>
-      </div>
     </div>
   );
 }

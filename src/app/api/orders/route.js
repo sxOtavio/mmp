@@ -31,9 +31,12 @@ export async function GET() {
         o.shipping_bairro,
         
         --  ITENS
+        oi.id AS item_id,
+        oi.product_id,
         oi.product_name,
         oi.quantity,
         oi.unit_price,
+        oi.actual_weight AS peso_real,
         oi.sold_by_weight 
 
       FROM orders o
@@ -52,41 +55,42 @@ export async function GET() {
           total: Number(row.total),
           created_at: row.created_at,
           shipping_frete: Number(row.shipping_frete) || 0,
-          
+
           //  DADOS DO CLIENTE (DO PEDIDO)
-          cliente_nome: row.cliente_nome || 'Não informado',
-          cliente_telefone: row.cliente_telefone || '',
-          cliente_cpf: row.cliente_cpf || '',
-          
+          cliente_nome: row.cliente_nome || "Não informado",
+          cliente_telefone: row.cliente_telefone || "",
+          cliente_cpf: row.cliente_cpf || "",
+
           //  ENDEREÇO (DO PEDIDO)
-          cliente_endereco: row.endereco || '',
-          cliente_numero: row.numero || '',
-          cliente_complemento: row.complemento || '',
-          cliente_bairro: row.bairro || '',
-          cliente_cidade: row.cidade || '',
-          cliente_estado: row.estado || 'DF',
-          cliente_cep: row.cep || '',
-          
+          cliente_endereco: row.endereco || "",
+          cliente_numero: row.numero || "",
+          cliente_complemento: row.complemento || "",
+          cliente_bairro: row.bairro || "",
+          cliente_cidade: row.cidade || "",
+          cliente_estado: row.estado || "DF",
+          cliente_cep: row.cep || "",
+
           itens: [],
         };
       }
 
-    
       pedidosMap[row.order_id].itens.push({
+        id: row.item_id,
+        product_id: row.product_id,
         nome: row.product_name,
-        quantidade: row.quantity,
-        preco: Number(row.unit_price),
-        sold_by_weight: row.sold_by_weight || false, // ← ADICIONADO
+        quantidade: Number(row.quantity) || 0,
+        preco: Number(row.unit_price) || 0,
+        peso_real: row.peso_real != null ? Number(row.peso_real) : null,
+        sold_by_weight: row.sold_by_weight || false,
       });
     });
 
     return NextResponse.json(Object.values(pedidosMap));
-
   } catch (error) {
     console.error("❌ Erro ao buscar pedidos:", error);
     return NextResponse.json(
       { error: "Erro ao buscar pedidos" },
-      { status: 500 }
+      { status: 500 },
     );
   } finally {
     if (client) client.release();
