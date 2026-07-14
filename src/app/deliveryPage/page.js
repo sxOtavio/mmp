@@ -50,7 +50,7 @@ export default function DeliveryPage() {
 
     if (pedidoConfirmado) {
       setMensagemNotificacao(
-        `💳 Pagamento confirmado para o pedido #${pedidoConfirmado.id}. O separador já pode seguir com a montagem.`,
+        `� Pedido #${pedidoConfirmado.id} pago com sucesso! Agora siga para a separação.`,
       );
       setMostrarNotificacao(true);
       window.setTimeout(() => setMostrarNotificacao(false), 5000);

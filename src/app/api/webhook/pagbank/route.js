@@ -111,20 +111,23 @@ const hasDeclinedKeyword = (value) => {
 const isLikelyOrderResource = (payload) => {
   if (!payload || typeof payload !== "object") return false;
 
-  return Boolean(
-    payload.reference_id ||
+  return (
+    Boolean(
+      payload.reference_id ||
       payload.order_id ||
       payload.id ||
       payload.resource?.reference_id ||
       payload.resource?.id,
-  ) && Boolean(
-    payload.items ||
+    ) &&
+    Boolean(
+      payload.items ||
       payload.customer ||
       payload.created_at ||
       payload.charges ||
       payload.payment_methods ||
       payload.payments ||
       payload.payment_response,
+    )
   );
 };
 
@@ -139,7 +142,12 @@ const isPaymentApproved = (payload) => {
     }
 
     for (const [key, value] of Object.entries(current)) {
-      if (key === "status" || key === "state" || key === "event" || key === "type") {
+      if (
+        key === "status" ||
+        key === "state" ||
+        key === "event" ||
+        key === "type"
+      ) {
         if (hasApprovedKeyword(value)) return true;
         if (hasDeclinedKeyword(value)) return false;
       }
