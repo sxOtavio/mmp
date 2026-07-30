@@ -225,9 +225,14 @@ export async function POST(request) {
     await client.query("BEGIN");
 
     const orderCheck = await client.query(
-      "SELECT id FROM orders WHERE id = $1",
-      [orderId],
+      `SELECT id FROM orders WHERE CAST(id AS text) = $1`,
+      [String(orderId)],
     );
+
+    console.log("🔎 Webhook: pedido encontrado no banco?", {
+      orderId,
+      foundRows: orderCheck.rows.length,
+    });
 
     if (orderCheck.rows.length === 0) {
       await client.query("ROLLBACK");
@@ -240,10 +245,16 @@ export async function POST(request) {
     // Quando receber notificação de pagamento aprovado, marcar como
     // `waiting_confirmation` para que o painel de entregadores exiba
     // claramente que o pedido foi pago e aguarda confirmação/retificação.
-    await client.query(
-      `UPDATE orders SET status = 'waiting_confirmation', updated_at = NOW() WHERE id = $1`,
-      [orderId],
+    const updateResult = await client.query(
+      `UPDATE orders SET status = 'waiting_confirmation', updated_at = NOW() WHERE CAST(id AS text) = $1 RETURNING id, status`,
+      [String(orderId)],
     );
+
+    console.log("✅ Webhook: pedido atualizado no banco", {
+      orderId,
+      updatedRows: updateResult.rowCount,
+      status: updateResult.rows?.[0]?.status || null,
+    });
 
     await client.query("COMMIT");
 
