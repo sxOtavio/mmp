@@ -50,7 +50,7 @@ export default function DeliveryPage() {
 
     if (pedidoConfirmado) {
       setMensagemNotificacao(
-        `� Pedido #${pedidoConfirmado.id} pago com sucesso! Agora siga para a separação.`,
+        `💳 Pedido #${pedidoConfirmado.id} pago com sucesso! Agora siga para a separação.`,
       );
       setMostrarNotificacao(true);
       window.setTimeout(() => setMostrarNotificacao(false), 5000);
@@ -142,7 +142,7 @@ export default function DeliveryPage() {
         preparing: "Pedido encaminhado para separação",
         out_for_delivery: "Pedido saiu para entrega",
         delivered: "Pedido entregue com sucesso!",
-        waiting_confirmation: "Pedido confirmado e pagamento liberado!",
+        waiting_confirmation: "Pagamento confirmado! O pedido está pago e pronto para separação.",
       };
 
       setMensagemNotificacao(mensagens[novoStatus] || "Status atualizado!");

@@ -69,15 +69,15 @@ export const STATUS_CONFIG = {
     descricao: "Pesos ajustados pelo separador",
   },
   waiting_confirmation: {
-    label: "Aguardando Confirmação",
-    icon: "⏳",
-    cor: "yellow",
-    bg: "bg-yellow-50",
+    label: "Pago / Pronto para Separação",
+    icon: "💳",
+    cor: "emerald",
+    bg: "bg-emerald-50",
     text: "text-black",
-    border: "border-yellow-200",
-    acao: "Finalizar Entrega",
-    proxStatus: "delivered",
-    descricao: "Aguardando resposta do cliente",
+    border: "border-emerald-200",
+    acao: "Iniciar Separação",
+    proxStatus: "preparing",
+    descricao: "Pagamento confirmado e pedido pronto para separação",
   },
 };
 
