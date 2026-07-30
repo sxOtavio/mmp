@@ -59,7 +59,7 @@ export default function DeliveryPage() {
     pedidosAnterioresRef.current = pedidos;
   }, [pedidos]);
 
-  // 🔥 CONTAR POR STATUS
+  // CONTAR POR STATUS
   const contarPorStatus = (pedidosList) => {
     const contagem = {
       total: pedidosList.length,

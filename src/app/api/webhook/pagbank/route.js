@@ -237,8 +237,11 @@ export async function POST(request) {
       );
     }
 
+    // Quando receber notificação de pagamento aprovado, marcar como
+    // `waiting_confirmation` para que o painel de entregadores exiba
+    // claramente que o pedido foi pago e aguarda confirmação/retificação.
     await client.query(
-      `UPDATE orders SET status = 'preparing', updated_at = NOW() WHERE id = $1`,
+      `UPDATE orders SET status = 'waiting_confirmation', updated_at = NOW() WHERE id = $1`,
       [orderId],
     );
 
