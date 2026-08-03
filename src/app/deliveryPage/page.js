@@ -142,7 +142,8 @@ export default function DeliveryPage() {
         preparing: "Pedido encaminhado para separação",
         out_for_delivery: "Pedido saiu para entrega",
         delivered: "Pedido entregue com sucesso!",
-        waiting_confirmation: "Pagamento confirmado! O pedido está pago e pronto para separação.",
+        waiting_confirmation:
+          "Pagamento confirmado! O pedido está pago e pronto para separação.",
       };
 
       setMensagemNotificacao(mensagens[novoStatus] || "Status atualizado!");

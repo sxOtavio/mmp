@@ -156,12 +156,13 @@ export function useDelivery() {
         console.log(`Pedido ${orderId} atualizado para ${status}`);
 
         const currentOrders = ordersRef.current;
+        const nextStatus = data?.order?.status ?? status;
         const updatedOrders = currentOrders.map((order) => {
           if (order.id === orderId) {
             return {
               ...order,
-              status_pedido: status,
-              status: status,
+              status_pedido: nextStatus,
+              status: nextStatus,
               atualizado_em: new Date().toISOString(),
             };
           }

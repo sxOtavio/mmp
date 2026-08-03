@@ -84,6 +84,11 @@ export async function PATCH(request, { params }) {
     }
 
     let paymentLink = null;
+    const currentOrderResult = await client.query(
+      `SELECT id, status, total, created_at FROM orders WHERE id = $1`,
+      [id],
+    );
+    const currentOrder = currentOrderResult.rows[0];
 
     if (status === "waiting_confirmation") {
       const orderResult = await client.query(
@@ -186,6 +191,13 @@ export async function PATCH(request, { params }) {
       if (!paymentLink) {
         throw new Error("PagBank não retornou um link de checkout");
       }
+
+      return NextResponse.json({
+        success: true,
+        message: "Link de pagamento gerado com sucesso",
+        order: currentOrder,
+        payment_link: paymentLink,
+      });
     }
 
     const result = await client.query(
